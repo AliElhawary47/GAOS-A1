@@ -38,7 +38,13 @@ Return ONLY valid JSON with these exact keys:
 Rules: ONLY JSON. No markdown. No backticks."""
 
 
+GAOS_LEAD_LABEL = "GAOS/Lead"
+
+
 def process_lead(gmail, cfg, message_id):
+    # Claim this email immediately so Module 03 won't double-send an SMS.
+    core.gmail_label(gmail, message_id, GAOS_LEAD_LABEL)
+
     headers, msg = core.gmail_get_message(gmail, message_id)
     sender       = headers.get("From", "Unknown")
     body_text    = core.gmail_get_body_text(msg)

@@ -23,7 +23,6 @@ Pain:   Relying on referrals while a monthly list of your most likely
         future clients is published for free by the government.
 """
 
-import time
 import io
 import csv
 import re
@@ -60,9 +59,6 @@ def price_score(price):
     return 0
 
 
-def is_run_time():
-    now = datetime.now()
-    return now.weekday() == RUN_WEEKDAY and now.hour == RUN_HOUR and now.minute < 5
 
 
 def get_postcode_prefix(postcode):
@@ -276,25 +272,16 @@ def run_radar(gmail, cfg):
     return logged
 
 
+def _tick(gmail, cfg):
+    if core.should_run_at(RUN_HOUR, weekday=RUN_WEEKDAY):
+        run_radar(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 30 — Land Registry Radar")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info(f"Scheduled: every Monday at {RUN_HOUR}:00am. Ctrl+C to stop.\n")
-    log.info("Tip: Add your postcode to config.json:")
-    log.info('  "business": { "postcode": "LS1 4AP" }\n')
-
-    while True:
-        try:
-            if is_run_time():
-                run_radar(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Land Registry error: {ex}")
-        time.sleep(300)
+    log.info(f"Scheduled: every Monday at {RUN_HOUR}:00. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

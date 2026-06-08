@@ -18,7 +18,6 @@ Target: Any business wanting consistent email marketing without
 Pain:   "We keep meaning to send a newsletter but never get round to it."
 """
 
-import time
 from datetime import datetime
 import gaos_core as core
 
@@ -27,14 +26,6 @@ log = core.get_logger("newsletter_mailer")
 RUN_WEEKDAY = 0   # Monday
 RUN_HOUR    = 9
 RUN_DAY_MAX = 7   # first Monday = day 1-7 of the month
-
-
-def is_run_time():
-    now = datetime.now()
-    return (now.weekday() == RUN_WEEKDAY
-            and now.hour == RUN_HOUR
-            and now.minute < 5
-            and now.day <= RUN_DAY_MAX)
 
 
 def build_newsletter_prompt(business_name, topics, tone, month_str):
@@ -126,23 +117,16 @@ def run_newsletter(gmail, cfg):
     core.sheets_update_cell(sheet_id, tab, idx + 2, 5, core.timestamp())
 
 
+def _tick(gmail, cfg):
+    if core.should_run_at(RUN_HOUR, weekday=RUN_WEEKDAY) and datetime.now().day <= RUN_DAY_MAX:
+        run_newsletter(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 32 — Newsletter Mailer")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Scheduled: first Monday of every month at 9am. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_run_time():
-                run_newsletter(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Error: {ex}")
-        time.sleep(300)
+    log.info("Scheduled: first Monday of every month at 9am. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

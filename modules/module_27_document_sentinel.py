@@ -23,7 +23,6 @@ document already flowing through GAOS.
 Target: Legal, accountancy, property, any business receiving contracts.
 """
 
-import time
 import re
 from datetime import datetime
 import gaos_core as core
@@ -225,26 +224,12 @@ def ensure_actions_tab(cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 27 — Document Sentinel")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     ensure_actions_tab(cfg)
-    log.info("Watching for incoming documents. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            n = process_new_documents(gmail, cfg)
-            if n:
-                log.info(f"Processed {n} document(s) for obligations.")
-            else:
-                log.info("No new documents to scan.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Sentinel error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+    log.info("module_27_document_sentinel: Watching for incoming documents.")
+    core.run_loop(lambda: process_new_documents(gmail, cfg),
+                  cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

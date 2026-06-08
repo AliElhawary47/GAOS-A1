@@ -28,7 +28,6 @@ Pain:   Negative reviews going unanswered for days. Positive reviews
 """
 
 import re
-import time
 from datetime import datetime
 import gaos_core as core
 
@@ -176,21 +175,11 @@ def scan(gmail, cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 33 — Review Monitor")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Watching for Google review notifications. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            scan(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+    log.info("module_33_review_monitor: Watching for Google review notifications.")
+    core.run_loop(lambda: scan(gmail, cfg),
+                  cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

@@ -10,7 +10,6 @@ Target client: Any invoicing business — agencies, accountants, trades.
 Pain solved:   Not knowing weekly revenue without manually totalling spreadsheets.
 """
 
-import time
 import re
 from datetime import datetime, timedelta
 import gaos_core as core
@@ -19,11 +18,6 @@ log = core.get_logger("revenue_snapshot")
 
 REPORT_HOUR    = 8
 REPORT_WEEKDAY = 0   # Monday = 0
-
-
-def is_report_time():
-    now = datetime.now()
-    return now.weekday() == REPORT_WEEKDAY and now.hour == REPORT_HOUR and now.minute < 5
 
 
 def parse_amount(amount_str):
@@ -90,23 +84,16 @@ def generate_snapshot(gmail, cfg):
     log.info(f"Revenue snapshot sent. This week: £{this_total:,.2f} ({this_count} invoices)")
 
 
+def _maybe_run(gmail, cfg):
+    if core.should_run_at(REPORT_HOUR, weekday=REPORT_WEEKDAY):
+        generate_snapshot(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 14 - Weekly Revenue Snapshot")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Scheduled: every Monday at 8am. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_report_time():
-                generate_snapshot(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Snapshot error: {ex}")
-        time.sleep(300)
+    log.info("module_14_revenue_snapshot: Scheduled every Monday at 8am.")
+    core.run_loop(lambda: _maybe_run(gmail, cfg), 300)
 
 
 if __name__ == "__main__":

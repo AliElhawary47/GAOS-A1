@@ -13,18 +13,12 @@ Target client: Any business owner who wants visibility without logging in.
 Pain solved:   Spending the first hour of every day piecing together what happened.
 """
 
-import time
 from datetime import datetime, timedelta
 import gaos_core as core
 
 log = core.get_logger("daily_digest")
 
 DIGEST_HOUR = 8   # send at 8:00am
-
-
-def is_digest_time():
-    now = datetime.now()
-    return now.hour == DIGEST_HOUR and now.minute < 5
 
 
 def count_todays_rows(rows, date_col_name, target_date_str):
@@ -98,23 +92,16 @@ def generate_digest(gmail, cfg):
     log.info("Daily digest sent.")
 
 
+def _maybe_run(gmail, cfg):
+    if core.should_run_at(DIGEST_HOUR):
+        generate_digest(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 13 - Daily Digest")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info(f"Scheduled to run at {DIGEST_HOUR}:00 every morning. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_digest_time():
-                generate_digest(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Digest error: {ex}")
-        time.sleep(300)   # check every 5 minutes
+    log.info(f"module_13_daily_digest: Scheduled daily at {DIGEST_HOUR}:00.")
+    core.run_loop(lambda: _maybe_run(gmail, cfg), 300)
 
 
 if __name__ == "__main__":

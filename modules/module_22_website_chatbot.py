@@ -27,23 +27,6 @@ _conversations = {}
 MAX_HISTORY = 10   # keep last N turns per session
 
 
-def load_knowledge(cfg):
-    """Loads the chatbot knowledge base from Google Sheets."""
-    try:
-        rows = core.sheets_read_all(
-            cfg["google_sheets"]["sheet_id"],
-            cfg["google_sheets"]["tabs"].get("chatbot", "Chatbot_Knowledge")
-        )
-        kb = []
-        for r in rows:
-            q = str(r.get("Question", "")).strip()
-            a = str(r.get("Answer", "")).strip()
-            if q and a:
-                kb.append(f"Q: {q}\nA: {a}")
-        return "\n\n".join(kb)
-    except Exception as e:
-        log.error(f"Knowledge load failed: {e}")
-        return ""
 
 
 def build_system_prompt(cfg, knowledge):
@@ -92,7 +75,7 @@ def handle_message(cfg, session_id, user_message):
     Main entry point called by gaos_server.py for each chat message.
     Returns the assistant's reply text.
     """
-    knowledge = load_knowledge(cfg)
+    knowledge = core.load_chatbot_knowledge(cfg)
 
     # Retrieve or start this session's history
     history = _conversations.get(session_id, [])

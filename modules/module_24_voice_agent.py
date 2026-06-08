@@ -26,19 +26,6 @@ _calls = {}          # keyed by Twilio CallSid → conversation history
 MAX_TURNS = 8
 
 
-def load_knowledge(cfg):
-    try:
-        rows = core.sheets_read_all(
-            cfg["google_sheets"]["sheet_id"],
-            cfg["google_sheets"]["tabs"].get("chatbot", "Chatbot_Knowledge")
-        )
-        return "\n\n".join(
-            f"Q: {r.get('Question','').strip()}\nA: {r.get('Answer','').strip()}"
-            for r in rows if r.get("Question") and r.get("Answer")
-        )
-    except Exception as e:
-        log.error(f"Knowledge load failed: {e}")
-        return ""
 
 
 def build_system_prompt(cfg, knowledge):
@@ -70,7 +57,7 @@ def handle_turn(cfg, call_sid, caller_number, speech_text):
     Processes one spoken turn. Returns TwiML for the next step.
     Called by gaos_server.py on POST /voice/handle.
     """
-    knowledge = load_knowledge(cfg)
+    knowledge = core.load_chatbot_knowledge(cfg)
     history = _calls.get(call_sid, [])
 
     if not speech_text:

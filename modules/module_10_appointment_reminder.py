@@ -13,7 +13,6 @@ Target client: Clinics, salons, consultants, personal trainers, dentists.
 Pain solved:   No-shows and last-minute cancellations from forgotten appointments.
 """
 
-import time
 from datetime import datetime, timedelta
 import gaos_core as core
 
@@ -98,24 +97,11 @@ def check_appointments(gmail, cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 10 - Appointment Reminder")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Watching appointments sheet. Ctrl+C to stop.\n")
-
-    # Run every 30 minutes for timely reminders
+    log.info("module_10_appointment_reminder: Watching appointments sheet.")
     poll = min(cfg["settings"]["check_every_seconds"], 1800)
-    while True:
-        try:
-            n = check_appointments(gmail, cfg)
-            log.info(f"Sent {n} reminder(s)." if n else "No reminders due.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Loop error: {ex}")
-        time.sleep(poll)
+    core.run_loop(lambda: check_appointments(gmail, cfg), poll)
 
 
 if __name__ == "__main__":

@@ -36,7 +36,6 @@ Pain:   Rate changes create client demand spikes that businesses
         miss. Inflation silently erodes retainer contracts every month.
 """
 
-import time
 import json
 from datetime import datetime, timedelta
 import gaos_core as core
@@ -59,14 +58,6 @@ CPI_MEMORY_KEY  = "ons_cpi_last"
 EROSION_ALERT_THRESHOLD = 0.08   # Alert when real value erosion exceeds 8%
 
 
-def is_rate_check_time():
-    now = datetime.now()
-    return now.hour == CHECK_HOUR and now.minute < 5
-
-
-def is_cpi_check_time():
-    now = datetime.now()
-    return now.day == 1 and now.hour == CPI_HOUR and now.minute < 5
 
 
 # ── BANK OF ENGLAND RATE ──────────────────────────────────────
@@ -367,46 +358,34 @@ def run_cpi_check(gmail, cfg, cpi_rate):
 
 # ── RUN ──────────────────────────────────────────────────────
 
+def _tick(gmail, cfg):
+    if core.should_run_at(CHECK_HOUR):
+        current_rate = fetch_current_boe_rate()
+        if current_rate is not None:
+            stored_rate = get_stored_rate(cfg)
+            if stored_rate is None:
+                log.info(f"Base rate recorded for first time: {current_rate:.2f}%")
+                store_rate(cfg, current_rate)
+            elif abs(current_rate - stored_rate) >= 0.01:
+                handle_rate_change(gmail, cfg, stored_rate, current_rate)
+                store_rate(cfg, current_rate)
+            else:
+                log.info(f"Rate unchanged: {current_rate:.2f}%")
+
+    if core.should_run_at(CPI_HOUR, day_of_month=1):
+        cpi = fetch_current_cpi()
+        if cpi:
+            log.info(f"ONS CPI: {cpi}% — checking contract erosion...")
+            run_cpi_check(gmail, cfg, cpi)
+        else:
+            log.warning("Could not fetch ONS CPI data.")
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 31 — Rate & Macro Pulse")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Watching Bank of England rate and ONS CPI. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            now = datetime.now()
-
-            # Rate check at noon
-            if is_rate_check_time():
-                current_rate = fetch_current_boe_rate()
-                if current_rate is not None:
-                    stored_rate = get_stored_rate(cfg)
-                    if stored_rate is None:
-                        log.info(f"Base rate recorded for first time: {current_rate:.2f}%")
-                        store_rate(cfg, current_rate)
-                    elif abs(current_rate - stored_rate) >= 0.01:
-                        handle_rate_change(gmail, cfg, stored_rate, current_rate)
-                        store_rate(cfg, current_rate)
-                    else:
-                        log.info(f"Rate unchanged: {current_rate:.2f}%")
-
-            # CPI check on 1st of month
-            if is_cpi_check_time():
-                cpi = fetch_current_cpi()
-                if cpi:
-                    log.info(f"ONS CPI: {cpi}% — checking contract erosion...")
-                    run_cpi_check(gmail, cfg, cpi)
-                else:
-                    log.warning("Could not fetch ONS CPI data.")
-
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Pulse error: {ex}")
-        time.sleep(300)
+    log.info("Watching Bank of England rate (noon daily) and ONS CPI (1st of month). Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

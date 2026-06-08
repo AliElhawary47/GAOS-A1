@@ -26,7 +26,6 @@ Pain solved: Relying on referrals and Google rankings while the
              every single day, in your own local area.
 """
 
-import time
 import json
 from datetime import datetime, timedelta
 import gaos_core as core
@@ -53,11 +52,6 @@ TRADES_KEYWORDS = [
 ]
 
 
-def is_run_time():
-    now = datetime.now()
-    return (now.weekday() == RUN_WKDAY
-            and now.hour == RUN_HOUR
-            and now.minute < 5)
 
 
 def fetch_planning_data(cfg):
@@ -246,25 +240,16 @@ def run_planning_scan(gmail, cfg):
     return leads_added
 
 
+def _tick(gmail, cfg):
+    if core.should_run_at(RUN_HOUR, weekday=RUN_WKDAY):
+        run_planning_scan(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 28 — Planning Radar")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info(f"Scheduled: every Monday at {RUN_HOUR}:00. Ctrl+C to stop.\n")
-    log.info("Tip: Add your postcode and council URL to config.json:")
-    log.info('  "business": { "postcode": "LS1 4AP", "council_planning_url": "..." }\n')
-
-    while True:
-        try:
-            if is_run_time():
-                run_planning_scan(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Planning radar error: {ex}")
-        time.sleep(300)
+    log.info(f"Scheduled: every Monday at {RUN_HOUR}:00. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

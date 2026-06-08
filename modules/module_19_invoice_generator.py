@@ -13,7 +13,6 @@ Target client: Consultants, accountants, agencies — anyone with monthly retain
 Pain solved:   Manually creating and sending the same invoices every month.
 """
 
-import time
 from datetime import datetime
 import gaos_core as core
 
@@ -21,11 +20,6 @@ log = core.get_logger("invoice_generator")
 
 SEND_HOUR = 8
 LAST_INVOICED_COL = 7
-
-
-def is_invoice_day():
-    now = datetime.now()
-    return now.day == 1 and now.hour == SEND_HOUR and now.minute < 5
 
 
 def generate_invoice_text(client_name, service, fee, currency, invoice_date, business_name):
@@ -94,24 +88,17 @@ def run_monthly_invoicing(gmail, cfg):
     return sent
 
 
+def _tick(gmail, cfg):
+    if core.should_run_at(SEND_HOUR, day_of_month=1):
+        n = run_monthly_invoicing(gmail, cfg)
+        log.info(f"Sent {n} monthly invoice(s)." if n else "No active retainers found.")
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 19 - Monthly Invoice Generator")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info(f"Scheduled: 1st of every month at {SEND_HOUR}:00am. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_invoice_day():
-                n = run_monthly_invoicing(gmail, cfg)
-                log.info(f"Sent {n} monthly invoice(s)." if n else "No active retainers found.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Error: {ex}")
-        time.sleep(300)
+    log.info(f"Scheduled: 1st of every month at {SEND_HOUR}:00. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

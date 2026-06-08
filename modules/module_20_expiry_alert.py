@@ -13,7 +13,6 @@ Target client: Trades companies, fleet businesses, property managers, any regula
 Pain solved:   Letting a critical licence or insurance lapse through oversight.
 """
 
-import time
 from datetime import datetime, timedelta
 import gaos_core as core
 
@@ -21,11 +20,6 @@ log = core.get_logger("expiry_alert")
 
 CHECK_HOUR = 9
 ALERT_COL  = 6   # "Alerted" column (1-based)
-
-
-def is_check_time():
-    now = datetime.now()
-    return now.hour == CHECK_HOUR and now.minute < 5
 
 
 def check_expiries(gmail, cfg):
@@ -78,24 +72,17 @@ def check_expiries(gmail, cfg):
     return alerted
 
 
+def _tick(gmail, cfg):
+    if core.should_run_at(CHECK_HOUR):
+        n = check_expiries(gmail, cfg)
+        log.info(f"Sent {n} expiry alert(s)." if n else "No items expiring soon.")
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 20 - Licence & Expiry Alert")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info(f"Scheduled: daily at {CHECK_HOUR}:00am. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_check_time():
-                n = check_expiries(gmail, cfg)
-                log.info(f"Sent {n} expiry alert(s)." if n else "No items expiring soon.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Error: {ex}")
-        time.sleep(300)
+    log.info(f"Scheduled: daily at {CHECK_HOUR}:00. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

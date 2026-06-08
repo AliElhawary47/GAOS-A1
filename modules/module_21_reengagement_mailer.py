@@ -13,7 +13,6 @@ Target client: Any service business — gyms, consultants, clinics, agencies.
 Pain solved:   Quietly losing clients who just drifted away because nobody reached out.
 """
 
-import time
 from datetime import datetime, timedelta
 import gaos_core as core
 
@@ -23,11 +22,6 @@ CHECK_HOUR         = 10
 CHECK_WEEKDAY      = 0    # Monday
 INACTIVE_DAYS      = 90   # trigger after this many days of silence
 REENGAGED_COL      = 4    # "Re-Engaged" column
-
-
-def is_check_time():
-    now = datetime.now()
-    return now.weekday() == CHECK_WEEKDAY and now.hour == CHECK_HOUR and now.minute < 5
 
 
 def build_reengage_prompt(client_name, business_name, notes):
@@ -92,24 +86,17 @@ def run_reengage_check(gmail, cfg):
     return sent
 
 
+def _tick(gmail, cfg):
+    if core.should_run_at(CHECK_HOUR, weekday=CHECK_WEEKDAY):
+        n = run_reengage_check(gmail, cfg)
+        log.info(f"Re-engaged {n} inactive client(s)." if n else "No inactive clients to contact.")
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 21 - Re-Engagement Mailer")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info(f"Scheduled: every Monday at {CHECK_HOUR}:00am. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_check_time():
-                n = run_reengage_check(gmail, cfg)
-                log.info(f"Re-engaged {n} inactive client(s)." if n else "No inactive clients to contact.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Error: {ex}")
-        time.sleep(300)
+    log.info(f"Scheduled: every Monday at {CHECK_HOUR}:00. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

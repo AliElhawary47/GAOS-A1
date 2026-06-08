@@ -18,7 +18,6 @@ The FAQ knowledge base lives in a Google Sheet tab
 GAOS reads these and uses them as the AI's source of truth.
 """
 
-import time
 import gaos_core as core
 
 log = core.get_logger("faq_reply")
@@ -111,39 +110,11 @@ def scan(gmail, cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 06 - Smart FAQ Mailbox Assistant")
-    print("="*60 + "\n")
-
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-
-    faq_text = load_faqs(cfg)
-    if not faq_text:
-        log.warning("FAQ knowledge base is empty. Add Q&A rows to the FAQ sheet tab.")
-    else:
-        log.info(f"Loaded FAQ knowledge base ({len(faq_text)} chars).")
-
-    log.info("Watching inbox for answerable questions. Ctrl+C to stop.\n")
-
-    count = 0
-    while True:
-        try:
-            # Reload FAQs each cycle so edits take effect without restart
-            faq_text = load_faqs(cfg)
-            emails   = core.gmail_search(gmail, "is:unread -subject:enquiry -subject:invoice")
-            for e in emails:
-                if process_email(gmail, cfg, faq_text, e["id"]):
-                    count += 1
-            if emails:
-                log.info(f"Processed {len(emails)} email(s). {count} FAQ drafts total.\n")
-            else:
-                log.info(f"No new emails. Next check in {cfg['settings']['check_every_seconds']//60} min.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Loop error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+    log.info("module_06_faq_reply: Watching inbox for answerable questions.")
+    core.run_loop(lambda: scan(gmail, cfg),
+                  cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

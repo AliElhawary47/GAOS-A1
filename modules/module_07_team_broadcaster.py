@@ -17,7 +17,6 @@ It looks for trigger emails (e.g. Stripe receipts, signed
 contracts) and posts a formatted summary to #company-updates.
 """
 
-import time
 import gaos_core as core
 
 log = core.get_logger("team_broadcaster")
@@ -95,28 +94,11 @@ def process_events(gmail, cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 07 - Centralised Team Notification HQ")
-    print("="*60 + "\n")
-
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Watching for business events to broadcast. Ctrl+C to stop.\n")
-
-    total = 0
-    while True:
-        try:
-            n = process_events(gmail, cfg)
-            total += n
-            if n:
-                log.info(f"Broadcast {n} event(s). {total} total.\n")
-            else:
-                log.info(f"No new events. Next check in {cfg['settings']['check_every_seconds']//60} min.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Loop error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+    log.info("module_07_team_broadcaster: Watching for business events to broadcast.")
+    core.run_loop(lambda: process_events(gmail, cfg),
+                  cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

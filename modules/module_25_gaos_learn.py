@@ -32,7 +32,6 @@ Memory is stored in a single "GAOS_Memory" sheet tab as key-value rows.
 All other modules call gaos_learn.get_context() to inject it into prompts.
 """
 
-import time
 import re
 from datetime import datetime, timedelta
 import gaos_core as core
@@ -255,9 +254,6 @@ def inject_chat(cfg, system_prompt):
 #  WEEKLY LEARNING CYCLE
 # ══════════════════════════════════════════════════════════════
 
-def is_learn_time():
-    now = datetime.now()
-    return now.weekday() == UPDATE_WKDAY and now.hour == UPDATE_HOUR and now.minute < 5
 
 
 def run_learning_cycle(cfg):
@@ -298,21 +294,12 @@ def ensure_memory_tab(cfg):
 # ══════════════════════════════════════════════════════════════
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 25 - GAOS Learn (Adaptive Memory)")
-    print("="*60 + "\n")
     cfg = core.load_config()
-    log.info(f"Scheduled: every Monday at {UPDATE_HOUR}:00am. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_learn_time():
-                run_learning_cycle(cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Learning cycle error: {ex}")
-        time.sleep(300)
+    log.info(f"Scheduled: every Monday at {UPDATE_HOUR}:00. Ctrl+C to stop.")
+    core.run_loop(
+        lambda: run_learning_cycle(cfg) if core.should_run_at(UPDATE_HOUR, weekday=UPDATE_WKDAY) else None,
+        cfg["settings"]["check_every_seconds"]
+    )
 
 
 if __name__ == "__main__":

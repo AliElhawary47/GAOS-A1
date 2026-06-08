@@ -11,7 +11,6 @@
 ╚══════════════════════════════════════════════════════════════╝
 """
 
-import time
 import gaos_core as core
 
 log = core.get_logger("invoice_scanner")
@@ -108,29 +107,11 @@ def scan(gmail, cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 01 - Smart Invoice & Receipt Tracker")
-    print("="*60 + "\n")
-
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Gmail connected. Watching for invoices. Ctrl+C to stop.\n")
-
-    count = 0
-    while True:
-        try:
-            emails = core.gmail_search(gmail, "is:unread has:attachment filename:pdf")
-            for e in emails:
-                if process_invoice(gmail, cfg, e["id"]):
-                    count += 1
-                    log.info(f"Invoice #{count} complete.\n")
-            if not emails:
-                log.info(f"No new invoices. Next check in {cfg['settings']['check_every_seconds']//60} min.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Loop error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+    log.info("module_01_invoice_scanner: Gmail connected. Watching for invoices.")
+    core.run_loop(lambda: scan(gmail, cfg),
+                  cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

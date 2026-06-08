@@ -1,9 +1,9 @@
 """
 ╔══════════════════════════════════════════════════════════════╗
-║   GAOS™ LAUNCHER v3.0                                       ║
+║   GAOS™ LAUNCHER v3.2                                       ║
 ║   Aether Frameworks                                         ║
 ║                                                             ║
-║   35 modules across 8 operational zones.                    ║
+║   33 modules across 8 operational zones.                    ║
 ║                                                             ║
 ║   Run a virtual role:                                       ║
 ║     python gaos_launcher.py admin          # Virtual Admin  ║
@@ -30,16 +30,19 @@ from multiprocessing import Process
 # ── ZONE DEFINITIONS ─────────────────────────────────────────
 
 ZONES = {
-    "Zone 1 — React":    ["01","02","03","04","05","06","07"],
-    "Zone 2 — Chase":    ["08","09","10","11","12"],
-    "Zone 3 — Report":   ["13","14","15","16"],
-    "Zone 4 — Schedule": ["17","18","19","20","21"],
-    "Zone 5 — Converse": ["22","23","24"],
-    "Zone 6 — Learn":    ["25","26","27","28"],
-    "Zone 0 — Sense":   ["29","30","31"],
-    "Zone 7 — Marketer": ["32","33","34"],
-    "Zone 8 — Chief of Staff": ["35"],
+    "Zone 1 — React":         ["01","02","03","04","05","06","07"],
+    "Zone 2 — Chase":         ["08","10","12"],
+    "Zone 3 — Report":        ["13","14","15","16"],
+    "Zone 4 — Schedule":      ["17","18","19","20","21"],
+    "Zone 5 — Converse":      ["22","23","24"],
+    "Zone 6 — Learn":         ["25","26","27","28"],
+    "Zone 0 — Sense":         ["29","30","31"],
+    "Zone 7 — Marketer":      ["32","33","34"],
+    "Zone 8 — Chief of Staff":["35"],
 }
+
+# Modules 09 (Proposal Chaser) and 11 (Document Chaser) were merged
+# into module 08 (Unified Item Chaser) in GAOS v3.2.
 
 MODULE_FILES = {
     "01": "modules.module_01_invoice_scanner",
@@ -49,10 +52,8 @@ MODULE_FILES = {
     "05": "modules.module_05_contract_sender",
     "06": "modules.module_06_faq_reply",
     "07": "modules.module_07_team_broadcaster",
-    "08": "modules.module_08_payment_chaser",
-    "09": "modules.module_09_proposal_chaser",
+    "08": "modules.module_08_chaser",
     "10": "modules.module_10_appointment_reminder",
-    "11": "modules.module_11_document_chaser",
     "12": "modules.module_12_noshow_followup",
     "13": "modules.module_13_daily_digest",
     "14": "modules.module_14_revenue_snapshot",
@@ -87,10 +88,8 @@ MODULE_NAMES = {
     "05": "Contract Sender",
     "06": "FAQ Auto-Reply",
     "07": "Team Broadcaster",
-    "08": "Payment Chaser",
-    "09": "Proposal Chaser",
+    "08": "Unified Item Chaser (payments · proposals · documents)",
     "10": "Appointment Reminder",
-    "11": "Document Chaser",
     "12": "No-Show Follow-Up",
     "13": "Daily Digest",
     "14": "Weekly Revenue Snapshot",
@@ -125,19 +124,19 @@ ROLES = {
     "admin": {
         "name":    "Virtual Admin",
         "tagline": "Paperwork, contracts, documents",
-        "modules": ["01","05","06","07","11","27"],
+        "modules": ["01","05","06","07","08","27"],  # 08 covers doc chasing
         "price":   199,
     },
     "sales": {
         "name":    "Virtual Sales",
         "tagline": "Leads, proposals, reviews, pipeline",
-        "modules": ["02","03","04","09","15"],
+        "modules": ["02","03","04","08","15"],        # 08 covers proposal chasing
         "price":   199,
     },
     "finance": {
         "name":    "Virtual Finance",
         "tagline": "Invoicing, chasing, financial reports",
-        "modules": ["08","13","14","16","19","20"],
+        "modules": ["08","13","14","16","19","20"],   # 08 covers payment chasing
         "price":   249,
     },
     "receptionist": {
@@ -165,12 +164,12 @@ VOICE_ADDON_MODULE = "24"
 
 FULL_TEAM_ROLES   = list(ROLES.keys())
 FULL_TEAM_PRICE   = 999    # vs £1,194 individually
-FULL_TEAM_MODULES = [m for r in ROLES.values() for m in r["modules"]] + [VOICE_ADDON_MODULE]
-# Total: 34 modules
+FULL_TEAM_MODULES = list(dict.fromkeys(
+    [m for r in ROLES.values() for m in r["modules"]] + [VOICE_ADDON_MODULE]
+))  # de-duped (module 08 appears in admin, sales, and finance)
 
 SETUP_FEES = {"1 role": 400, "2-3 roles": 900, "Full Team": 1600}
 
-# Legacy TIERS kept for backwards compat with gaos_engine.py
 TIERS = {
     "admin":         ROLES["admin"]["modules"],
     "sales":         ROLES["sales"]["modules"],
@@ -183,8 +182,8 @@ TIERS = {
 
 STANDALONE_PRICES = {
     "01":"£1,200","02":"£750","03":"£600","04":"£600","05":"£1,100",
-    "06":"£950","07":"£900","08":"£850","09":"£750","10":"£650",
-    "11":"£800","12":"£600","13":"£700","14":"£800","15":"£750",
+    "06":"£950","07":"£900","08":"£950","10":"£650",
+    "12":"£600","13":"£700","14":"£800","15":"£750",
     "16":"£850","17":"£650","18":"£900","19":"£1,100","20":"£700","21":"£750",
     "22":"£1,400","23":"£1,600","24":"£2,200",
     "25":"£550","26":"£650","27":"£900","28":"£750","29":"£700",
@@ -200,9 +199,10 @@ def start_module(module_id):
 SERVER_MODULES = {"22", "23", "24"}
 
 def launch(module_ids):
-    # Zone 5 (conversational) modules run on the web server, not as pollers.
-    server_needed = [m for m in module_ids if m in SERVER_MODULES]
-    poller_ids    = [m for m in module_ids if m not in SERVER_MODULES]
+    # Deduplicate (module 08 may appear in multiple roles)
+    unique_ids    = list(dict.fromkeys(module_ids))
+    server_needed = [m for m in unique_ids if m in SERVER_MODULES]
+    poller_ids    = [m for m in unique_ids if m not in SERVER_MODULES]
 
     processes = []
     for mid in poller_ids:
@@ -232,10 +232,13 @@ def launch(module_ids):
 
 def list_modules():
     print()
+    seen = set()
     for role_key, role in ROLES.items():
         print(f"  {role['name']} — £{role['price']}/mo")
         for mid in role["modules"]:
-            print(f"    [{mid}]  {MODULE_NAMES[mid]}")
+            if mid not in seen:
+                print(f"    [{mid}]  {MODULE_NAMES[mid]}")
+                seen.add(mid)
         print()
     print(f"  AI Voice Agent — £99/mo add-on")
     print(f"    [{VOICE_ADDON_MODULE}]  {MODULE_NAMES[VOICE_ADDON_MODULE]}")
@@ -246,8 +249,8 @@ def list_modules():
 
 def main():
     print("\n" + "═"*60)
-    print("  GAOS™ v3.0 — Ghost Assistant Operating System")
-    print("  Aether Frameworks — 35 Modules | 6 Virtual Roles")
+    print("  GAOS™ v3.2 — Ghost Assistant Operating System")
+    print("  Aether Frameworks — 33 Modules | 6 Virtual Roles")
     print("═"*60)
 
     args = sys.argv[1:]
@@ -284,7 +287,7 @@ def main():
         return
 
     modules = TIERS[tier]
-    print(f"\n  Launching GAOS™ {tier.upper()} — {len(modules)} modules:\n")
+    print(f"\n  Launching GAOS™ {tier.upper()} — {len(set(modules))} module(s):\n")
     launch(modules)
 
 

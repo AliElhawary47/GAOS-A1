@@ -22,7 +22,6 @@ Pain solved: The client who goes quiet and disappears. Silently.
              had already decided to leave.
 """
 
-import time
 import re
 from datetime import datetime, timedelta
 import gaos_core as core
@@ -37,12 +36,6 @@ WARM_THRESHOLD  = 0.7   # above = green
 COOL_THRESHOLD  = 0.4   # below = red (at risk)
 
 
-def is_run_time():
-    now = datetime.now()
-    return (now.weekday() == RUN_WKDAY
-            and now.hour == RUN_HOUR
-            and now.minute >= RUN_MINUTE
-            and now.minute < RUN_MINUTE + 5)
 
 
 # ── GMAIL THREAD ANALYSIS ────────────────────────────────────
@@ -285,23 +278,16 @@ def run_pulse_check(gmail, cfg):
 
 # ── RUN ──────────────────────────────────────────────────────
 
+def _tick(gmail, cfg):
+    if core.should_run_at(RUN_HOUR, weekday=RUN_WKDAY, minute_start=RUN_MINUTE):
+        run_pulse_check(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 26 — Client Pulse (Silence Radar)")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info(f"Scheduled: every Monday at {RUN_HOUR}:{RUN_MINUTE:02d}. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_run_time():
-                run_pulse_check(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Pulse error: {ex}")
-        time.sleep(300)
+    log.info(f"Scheduled: every Monday at {RUN_HOUR}:{RUN_MINUTE:02d}. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

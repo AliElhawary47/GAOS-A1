@@ -13,7 +13,6 @@ Target client: Gyms, clinics, consultants, estate agents, any relationship busin
 Pain solved:   Missing the simple human touches that make clients stay loyal.
 """
 
-import time
 from datetime import datetime
 import gaos_core as core
 
@@ -22,11 +21,6 @@ log = core.get_logger("birthday_mailer")
 SEND_HOUR    = 9
 BIRTHDAY_COL = 5     # "Last Birthday Mail" column
 ANNIV_COL    = 6     # "Last Anniversary Mail" column
-
-
-def is_send_time():
-    now = datetime.now()
-    return now.hour == SEND_HOUR and now.minute < 5
 
 
 def matches_today(date_str):
@@ -98,24 +92,16 @@ def run_daily_check(gmail, cfg):
     return sent
 
 
+def _maybe_run(gmail, cfg):
+    if core.should_run_at(SEND_HOUR):
+        run_daily_check(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 17 - Birthday & Anniversary Mailer")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info(f"Scheduled: daily at {SEND_HOUR}:00am. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_send_time():
-                n = run_daily_check(gmail, cfg)
-                log.info(f"Sent {n} personal message(s)." if n else "No birthdays or anniversaries today.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Error: {ex}")
-        time.sleep(300)
+    log.info(f"module_17_birthday_mailer: Scheduled daily at {SEND_HOUR}:00am.")
+    core.run_loop(lambda: _maybe_run(gmail, cfg), 300)
 
 
 if __name__ == "__main__":

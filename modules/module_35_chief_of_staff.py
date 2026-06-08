@@ -33,7 +33,6 @@ Integration with Module 23 (WhatsApp Agent):
 """
 
 import re
-import time
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -91,13 +90,6 @@ def is_cos_query(text: str) -> bool:
     return bool(COS_PATTERN.search(text.strip()))
 
 
-def is_run_time(weekly=False):
-    now = datetime.now()
-    if now.hour != BRIEF_HOUR:
-        return False
-    if weekly:
-        return now.weekday() == 0 and now.minute >= BRIEF_MINUTE + 10 and now.minute < BRIEF_MINUTE + 15
-    return now.minute >= BRIEF_MINUTE and now.minute < BRIEF_MINUTE + 5
 
 
 # ── INTELLIGENCE GATHERERS ────────────────────────────────────
@@ -634,25 +626,18 @@ def run_weekly_summary(gmail, cfg):
 
 # ── ENGINE INTERFACE ──────────────────────────────────────────
 
+def _tick(gmail, cfg):
+    if core.should_run_at(BRIEF_HOUR, minute_start=BRIEF_MINUTE):
+        run_morning_brief(gmail, cfg)
+    if core.should_run_at(BRIEF_HOUR, weekday=0, minute_start=WEEKLY_MINUTE):
+        run_weekly_summary(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 35 — AI Chief of Staff")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Scheduled: daily 07:30, weekly Mondays 07:45. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_run_time():
-                run_morning_brief(gmail, cfg)
-            if is_run_time(weekly=True):
-                run_weekly_summary(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Chief of Staff error: {ex}")
-        time.sleep(300)
+    log.info("Scheduled: daily 07:30, weekly Mondays 07:45. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

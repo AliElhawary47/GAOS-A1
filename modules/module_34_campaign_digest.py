@@ -13,7 +13,6 @@ Target: Any business running the Virtual Marketer role.
 Pain:   "I never know if our marketing is actually doing anything."
 """
 
-import time
 from datetime import datetime, timedelta
 import gaos_core as core
 
@@ -21,11 +20,6 @@ log = core.get_logger("campaign_digest")
 
 RUN_HOUR    = 17
 RUN_WEEKDAY = 4   # Friday
-
-
-def is_run_time():
-    now = datetime.now()
-    return now.weekday() == RUN_WEEKDAY and now.hour == RUN_HOUR and now.minute < 5
 
 
 def count_this_week(rows, date_col, default_col=None):
@@ -117,23 +111,16 @@ def generate_digest(gmail, cfg):
     log.info("Campaign digest sent.")
 
 
+def _tick(gmail, cfg):
+    if core.should_run_at(RUN_HOUR, weekday=RUN_WEEKDAY):
+        generate_digest(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 34 — Campaign Digest")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Scheduled: every Friday at 5pm. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_run_time():
-                generate_digest(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Error: {ex}")
-        time.sleep(300)
+    log.info("Scheduled: every Friday at 17:00. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

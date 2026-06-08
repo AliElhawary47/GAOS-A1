@@ -10,7 +10,6 @@ Target client: Estate agents, consultants, agencies, any sales-driven business.
 Pain solved:   Not knowing which leads are going cold or how the pipeline is performing.
 """
 
-import time
 from datetime import datetime, timedelta
 import gaos_core as core
 
@@ -18,11 +17,6 @@ log = core.get_logger("pipeline_report")
 
 REPORT_HOUR    = 17
 REPORT_WEEKDAY = 4   # Friday = 4
-
-
-def is_report_time():
-    now = datetime.now()
-    return now.weekday() == REPORT_WEEKDAY and now.hour == REPORT_HOUR and now.minute < 5
 
 
 def days_since(date_str):
@@ -81,23 +75,16 @@ def generate_pipeline_report(gmail, cfg):
     log.info(f"Pipeline report sent. {len(open_leads)} open leads.")
 
 
+def _maybe_run(gmail, cfg):
+    if core.should_run_at(REPORT_HOUR, weekday=REPORT_WEEKDAY):
+        generate_pipeline_report(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 15 - Lead Pipeline Report")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Scheduled: every Friday at 5pm. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_report_time():
-                generate_pipeline_report(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Report error: {ex}")
-        time.sleep(300)
+    log.info("module_15_pipeline_report: Scheduled every Friday at 5pm.")
+    core.run_loop(lambda: _maybe_run(gmail, cfg), 300)
 
 
 if __name__ == "__main__":

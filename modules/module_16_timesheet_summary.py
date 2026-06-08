@@ -13,7 +13,6 @@ Target client: Trades companies, agencies, any business with hourly/daily staff.
 Pain solved:   Manually totalling timesheets before payroll or billing.
 """
 
-import time
 from datetime import datetime, timedelta
 import gaos_core as core
 
@@ -21,11 +20,6 @@ log = core.get_logger("timesheet_summary")
 
 REPORT_HOUR    = 18
 REPORT_WEEKDAY = 4   # Friday
-
-
-def is_report_time():
-    now = datetime.now()
-    return now.weekday() == REPORT_WEEKDAY and now.hour == REPORT_HOUR and now.minute < 5
 
 
 def get_week_start():
@@ -80,23 +74,16 @@ def generate_timesheet_summary(gmail, cfg):
     log.info(f"Timesheet summary sent. {len(staff_hours)} staff, {total_hours:.1f} total hours.")
 
 
+def _maybe_run(gmail, cfg):
+    if core.should_run_at(REPORT_HOUR, weekday=REPORT_WEEKDAY):
+        generate_timesheet_summary(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 16 - Staff Timesheet Summary")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Scheduled: every Friday at 6pm. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            if is_report_time():
-                generate_timesheet_summary(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Timesheet error: {ex}")
-        time.sleep(300)
+    log.info("module_16_timesheet_summary: Scheduled every Friday at 6pm.")
+    core.run_loop(lambda: _maybe_run(gmail, cfg), 300)
 
 
 if __name__ == "__main__":

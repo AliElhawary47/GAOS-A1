@@ -16,7 +16,6 @@ critical path, so the SMS goes out in seconds. AI is used only to
 pull the lead's name and need into a short summary.
 """
 
-import time
 import gaos_core as core
 
 log = core.get_logger("urgent_alert")
@@ -77,7 +76,7 @@ def process_urgent_lead(gmail, cfg, message_id):
 
 
 
-URGENT_QUERY = 'is:unread (subject:enquiry OR subject:quote OR subject:"contact form" OR subject:emergency)'
+URGENT_QUERY = 'is:unread -label:GAOS/Lead (subject:enquiry OR subject:quote OR subject:"contact form" OR subject:emergency)'
 
 def scan(gmail, cfg):
     """Called by gaos_engine.py each poll cycle."""
@@ -89,34 +88,11 @@ def scan(gmail, cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 03 - Emergency Lead SMS Alert")
-    print("="*60 + "\n")
-
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Watching for urgent leads. Fast SMS mode. Ctrl+C to stop.\n")
-
-    query = 'is:unread (subject:enquiry OR subject:quote OR subject:"contact form" OR subject:emergency)'
-
-    count = 0
-    # Faster polling for urgent leads — every 60 seconds regardless of config
+    log.info("module_03_urgent_alert: Watching for urgent leads. Fast SMS mode.")
     poll = min(cfg["settings"]["check_every_seconds"], 60)
-
-    while True:
-        try:
-            emails = core.gmail_search(gmail, query)
-            for e in emails:
-                if process_urgent_lead(gmail, cfg, e["id"]):
-                    count += 1
-                    log.info(f"Alert #{count} fired.\n")
-            if not emails:
-                log.info(f"No urgent leads. Next check in {poll}s.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Loop error: {ex}")
-        time.sleep(poll)
+    core.run_loop(lambda: scan(gmail, cfg), poll)
 
 
 if __name__ == "__main__":

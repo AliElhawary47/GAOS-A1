@@ -19,7 +19,6 @@ How it works:
   GAOS sends the review request and marks column D as "Sent".
 """
 
-import time
 import gaos_core as core
 
 log = core.get_logger("review_requester")
@@ -79,25 +78,10 @@ def check_completed_jobs(cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 04 - Google Review Auto-Booster")
-    print("="*60 + "\n")
-
     cfg = core.load_config()
-    log.info("Watching for completed jobs. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            n = check_completed_jobs(cfg)
-            if n:
-                log.info(f"Sent {n} review request(s) this cycle.\n")
-            else:
-                log.info(f"No new completed jobs. Next check in {cfg['settings']['check_every_seconds']//60} min.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Loop error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+    log.info("module_04_review_requester: Watching for completed jobs.")
+    core.run_loop(lambda: check_completed_jobs(cfg),
+                  cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

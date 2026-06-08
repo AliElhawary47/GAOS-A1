@@ -31,7 +31,6 @@ Pain:   The client who owed you £8,000 filed for administration this morning.
         You didn't know. You won't chase. The window closes in 14 days.
 """
 
-import time
 import re
 from datetime import datetime, timedelta
 import gaos_core as core
@@ -50,9 +49,6 @@ NOTICE_TYPES = {
 }
 
 
-def is_run_time():
-    now = datetime.now()
-    return now.hour == RUN_HOUR and now.minute < 5
 
 
 def fetch_gazette_notices(notice_type_code, days_back=1):
@@ -277,24 +273,16 @@ def _send_risk_alert(gmail, cfg, alerts, today):
     log.info(f"Risk alert sent: {len(alerts)} notice(s)")
 
 
+def _tick(gmail, cfg):
+    if core.should_run_at(RUN_HOUR):
+        run_gazette_scan(gmail, cfg)
+
+
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 29 — Gazette Monitor")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info(f"Scheduled: daily at {RUN_HOUR}:00am. Ctrl+C to stop.\n")
-    log.info("Reading the London Gazette: insolvency, strike-off, and estate notices.\n")
-
-    while True:
-        try:
-            if is_run_time():
-                run_gazette_scan(gmail, cfg)
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Gazette scan error: {ex}")
-        time.sleep(300)
+    log.info(f"Scheduled: daily at {RUN_HOUR}:00. Ctrl+C to stop.")
+    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

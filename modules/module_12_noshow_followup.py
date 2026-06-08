@@ -13,7 +13,6 @@ Target client: Clinics, salons, personal trainers, consultants.
 Pain solved:   Revenue lost from missed appointments that are never rebooked.
 """
 
-import time
 import gaos_core as core
 
 log = core.get_logger("noshow_followup")
@@ -75,22 +74,11 @@ def check_noshows(gmail, cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 12 - No-Show Follow-Up")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Watching for no-shows. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            n = check_noshows(gmail, cfg)
-            log.info(f"Sent {n} rebooking message(s)." if n else "No no-shows to follow up.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Loop error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+    log.info("module_12_noshow_followup: Watching for no-shows.")
+    core.run_loop(lambda: check_noshows(gmail, cfg),
+                  cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

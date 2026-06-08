@@ -17,7 +17,6 @@ contract_template.txt. Use {ClientName}, {CompanyName},
 """
 
 import os
-import time
 import gaos_core as core
 
 log = core.get_logger("contract_sender")
@@ -154,32 +153,12 @@ def scan(gmail, cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 05 - Automated Contract & Onboarding")
-    print("="*60 + "\n")
-
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     get_template()  # ensure template exists
-    log.info("Watching for new client onboarding requests. Ctrl+C to stop.\n")
-
-    query = 'is:unread (subject:"new client" OR subject:onboarding OR subject:"sign up")'
-
-    count = 0
-    while True:
-        try:
-            emails = core.gmail_search(gmail, query)
-            for e in emails:
-                if process_onboarding(gmail, cfg, e["id"]):
-                    count += 1
-                    log.info(f"Onboarding #{count} complete.\n")
-            if not emails:
-                log.info(f"No new requests. Next check in {cfg['settings']['check_every_seconds']//60} min.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Loop error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+    log.info("module_05_contract_sender: Watching for new client onboarding requests.")
+    core.run_loop(lambda: scan(gmail, cfg),
+                  cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

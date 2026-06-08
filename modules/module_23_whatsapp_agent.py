@@ -33,19 +33,6 @@ MAX_HISTORY = 10
 ESCALATE_FLAG = "[ESCALATE]"
 
 
-def load_knowledge(cfg):
-    """Shares the same knowledge base tab as the website chatbot."""
-    try:
-        rows = core.sheets_read_all(
-            cfg["google_sheets"]["sheet_id"],
-            cfg["google_sheets"]["tabs"].get("chatbot", "Chatbot_Knowledge")
-        )
-        kb = [f"Q: {r.get('Question','').strip()}\nA: {r.get('Answer','').strip()}"
-              for r in rows if r.get("Question") and r.get("Answer")]
-        return "\n\n".join(kb)
-    except Exception as e:
-        log.error(f"Knowledge load failed: {e}")
-        return ""
 
 
 def build_system_prompt(cfg, knowledge):
@@ -93,7 +80,7 @@ def handle_message(cfg, sender, body):
     `sender` is the phone number, `body` is the message text.
     Returns the reply text to send back via WhatsApp.
     """
-    knowledge = load_knowledge(cfg)
+    knowledge = core.load_chatbot_knowledge(cfg)
     history = _conversations.get(sender, [])
     history.append({"role": "user", "content": body})
 

@@ -14,7 +14,6 @@ Target client: Any business that needs consistent social presence.
 Pain solved:   Social media paralysis — ideas sitting unposted because nobody has time to write them.
 """
 
-import time
 from datetime import datetime
 import gaos_core as core
 
@@ -94,22 +93,11 @@ def process_due_posts(gmail, cfg):
 
 
 def run():
-    print("\n" + "="*60)
-    print("  GAOS MODULE 18 - Social Post Scheduler")
-    print("="*60 + "\n")
     cfg   = core.load_config()
     gmail = core.connect_gmail()
-    log.info("Watching Social_Queue for scheduled posts. Ctrl+C to stop.\n")
-
-    while True:
-        try:
-            n = process_due_posts(gmail, cfg)
-            log.info(f"Processed {n} post(s)." if n else "No posts due today.")
-        except KeyboardInterrupt:
-            print("\nStopped.\n"); break
-        except Exception as ex:
-            log.error(f"Error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+    log.info("module_18_social_scheduler: Watching Social_Queue for scheduled posts.")
+    core.run_loop(lambda: process_due_posts(gmail, cfg),
+                  cfg["settings"]["check_every_seconds"])
 
 
 if __name__ == "__main__":

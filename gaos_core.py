@@ -510,3 +510,79 @@ def twiml_say_hangup(text: str) -> str:
         "<Hangup/>"
         "</Response>"
     )
+
+
+# ── SCHEDULING ───────────────────────────────────────────────────
+
+def should_run_at(hour: int, weekday: int = None, day_of_month: int = None,
+                  minute_start: int = 0, minute_window: int = 5) -> bool:
+    """
+    Returns True once per scheduled window.
+
+    hour          — 0-23, required
+    weekday       — 0=Monday … 6=Sunday (None = every day)
+    day_of_month  — 1-31 (None = every day; combined with weekday for e.g. 'first Monday')
+    minute_start  — minute the window opens (default 0)
+    minute_window — how many minutes the window stays open (default 5)
+
+    Examples:
+        should_run_at(8)                        → daily at 08:00–08:05
+        should_run_at(8, weekday=0)             → every Monday at 08:00–08:05
+        should_run_at(9, day_of_month=1)        → 1st of every month at 09:00–09:05
+        should_run_at(7, minute_start=30)       → daily at 07:30–07:35
+        should_run_at(7, weekday=0, minute_start=45) → every Monday at 07:45–07:50
+    """
+    now = datetime.now()
+    if now.hour != hour:
+        return False
+    if not (minute_start <= now.minute < minute_start + minute_window):
+        return False
+    if weekday is not None and now.weekday() != weekday:
+        return False
+    if day_of_month is not None and now.day != day_of_month:
+        return False
+    return True
+
+
+def run_loop(action_fn, poll_seconds: int = 300):
+    """
+    Standard GAOS polling loop. Calls action_fn() every poll_seconds.
+    Handles KeyboardInterrupt for clean Ctrl+C shutdown.
+    All exceptions inside action_fn are caught and logged so the loop never dies.
+
+    Usage in a module's run():
+        core.run_loop(lambda: check_something(gmail, cfg),
+                      cfg["settings"]["check_every_seconds"])
+    """
+    try:
+        while True:
+            try:
+                action_fn()
+            except Exception as exc:
+                _log.error("run_loop error: %s", exc)
+            time.sleep(poll_seconds)
+    except KeyboardInterrupt:
+        print("\nStopped.\n")
+
+
+# ── CHATBOT KNOWLEDGE ─────────────────────────────────────────────
+
+def load_chatbot_knowledge(cfg: dict) -> str:
+    """
+    Loads the shared chatbot/voice knowledge base from Google Sheets.
+    Returns a formatted string of Q&A pairs used by modules 22, 23, and 24.
+    """
+    try:
+        rows = sheets_read_all(
+            cfg["google_sheets"]["sheet_id"],
+            cfg["google_sheets"]["tabs"].get("chatbot", "Chatbot_Knowledge")
+        )
+        pairs = [
+            f"Q: {str(r.get('Question', '')).strip()}\nA: {str(r.get('Answer', '')).strip()}"
+            for r in rows
+            if r.get("Question") and r.get("Answer")
+        ]
+        return "\n\n".join(pairs)
+    except Exception as exc:
+        _log.error("load_chatbot_knowledge failed: %s", exc)
+        return ""
