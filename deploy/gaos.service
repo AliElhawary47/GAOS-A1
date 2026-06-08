@@ -1,0 +1,14 @@
+[Unit]
+Description=GAOS™ v3.0 — Ghost Assistant Operating System
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/gaos
+ExecStart=/usr/bin/python3 gaos_launcher.py full_team
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

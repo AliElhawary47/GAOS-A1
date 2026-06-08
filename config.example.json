@@ -1,0 +1,87 @@
+{
+  "_comment": "GAOS™ v3.2 config (34 modules + AI failover). Copy to config.json and fill in real values. Secrets can also be set as environment variables (e.g. DEEPSEEK_API_KEY).",
+  "deepseek": {
+    "api_key": "YOUR_DEEPSEEK_KEY_HERE",
+    "_comment": "Primary AI provider. Get key at: platform.deepseek.com  ~£2-5/month typical usage."
+  },
+  "groq": {
+    "api_key": "YOUR_GROQ_KEY_HERE",
+    "_comment": "FREE TIER fallback AI. Sign up at: groq.com — no credit card required. Auto-activated when DeepSeek is unavailable."
+  },
+  "gmail": {
+    "watch_inbox": "YOUR_WATCH_INBOX@gmail.com",
+    "alert_email": "YOUR_PERSONAL_EMAIL@gmail.com"
+  },
+  "google_sheets": {
+    "sheet_id": "YOUR_GOOGLE_SHEET_ID_HERE",
+    "tabs": {
+      "invoices":          "Invoice_Log",
+      "leads":             "Lead_Log",
+      "reviews":           "Completed_Jobs",
+      "contracts":         "Contract_Log",
+      "faq":               "FAQ_Knowledge_Base",
+      "appointments":      "Appointments",
+      "proposals":         "Proposals",
+      "pending_documents": "Pending_Documents",
+      "clients":           "Clients",
+      "social_queue":      "Social_Queue",
+      "retainer_clients":  "Retainer_Clients",
+      "licences":          "Licences",
+      "timesheets":        "Timesheets",
+      "chatbot":           "Chatbot_Knowledge",
+      "sentinel_actions":  "Sentinel_Actions",
+      "gazette_hits":      "Gazette_Hits",
+      "land_leads":        "Land_Registry_Leads",
+      "macro_log":         "Macro_Log",
+      "newsletter_queue":  "Newsletter_Queue",
+      "reviews_log":       "Reviews_Log",
+      "campaign_log":      "Campaign_Log",
+      "memory":            "GAOS_Memory",
+      "pulse_log":         "Client_Pulse_Log",
+      "actions_log":       "Actions_Log",
+      "usage_log":         "Usage_Log"
+    }
+  },
+  "twilio": {
+    "account_sid":   "YOUR_TWILIO_SID_HERE",
+    "auth_token":    "YOUR_TWILIO_TOKEN_HERE",
+    "from_number":   "+44XXXXXXXXXX",
+    "owner_mobile":  "+44XXXXXXXXXX",
+    "whatsapp_from": "whatsapp:+14155238886"
+  },
+  "slack": {
+    "webhook_url": "YOUR_SLACK_WEBHOOK_URL_HERE"
+  },
+  "business": {
+    "name":                 "Client Business Name",
+    "google_review_link":   "https://g.page/r/YOUR_REVIEW_LINK",
+    "owner_name":           "Your Name",
+    "owner_mobile":         "+44XXXXXXXXXX",
+    "booking_link":         "https://calendly.com/yourbusiness",
+    "website":              "https://yourbusiness.co.uk",
+    "postcode":             "LS1 4AP",
+    "council_planning_url": "",
+    "type":                 "trades"
+  },
+  "active_roles": [
+    "admin",
+    "sales",
+    "finance",
+    "receptionist",
+    "marketer",
+    "intelligence"
+  ],
+  "settings": {
+    "check_every_seconds":              300,
+    "archive_folder":                   "gaos_archive",
+    "heartbeat_file":                   "gaos_heartbeat.json",
+    "auto_restart_hours":               24,
+    "alert_after_consecutive_failures": 3,
+    "cost_tracking_enabled":            true,
+    "ai_failover_alert":                true
+  },
+  "server": {
+    "port":       8080,
+    "public_url": "https://your-gaos-server.up.railway.app"
+  }
+}

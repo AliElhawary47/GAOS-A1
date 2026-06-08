@@ -1,0 +1,8 @@
+# GAOS
+__pycache__/
+*.pyc
+config.json
+token.json
+credentials.json
+service_account.json
+gaos_archive/

@@ -1,0 +1,21 @@
+SERVICE AGREEMENT
+
+Date: {Date}
+
+Between: {CompanyName}
+And:     {ClientName}
+
+1. SERVICE
+{CompanyName} agrees to provide the following service:
+{ServiceDescription}
+
+2. FEE
+The agreed fee for this service is {Fee}.
+
+3. TERMS
+Payment terms and delivery to be confirmed in writing.
+This agreement is governed by the laws of England and Wales.
+
+Signed: ______________________   Date: ____________
+
+{CompanyName}
