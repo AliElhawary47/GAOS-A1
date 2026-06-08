@@ -1,0 +1,2 @@
+web: gunicorn gaos_server:app
+worker: python gaos_launcher.py full_team

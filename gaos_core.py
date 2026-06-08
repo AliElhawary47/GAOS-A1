@@ -1,0 +1,512 @@
+"""
+GAOS™ Shared Runtime Library
+=============================
+Centralised helpers used by all 35 GAOS modules via ``import gaos_core as core``.
+
+Required credential files (place in the project root):
+  credentials.json   — Google OAuth2 client secrets (Desktop app type).
+                        Download from Google Cloud Console → APIs & Services
+                        → Credentials.  Needed by connect_gmail().
+  token.json         — Auto-generated on first OAuth run; refreshed automatically.
+                        Delete this file to force a fresh browser login.
+  service_account.json — Google service-account key (JSON format) with Sheets
+                          Editor access granted on each target spreadsheet.
+                          Used by the Sheets helpers.  If absent the Sheets
+                          helpers fall back to the same OAuth token.json used
+                          by Gmail.
+"""
+
+import base64
+import io
+import json
+import logging
+import os
+import re
+import time
+from datetime import datetime
+from email.mime.text import MIMEText
+from pathlib import Path
+
+import requests
+# Heavy/optional deps are imported lazily inside the functions that use them:
+#   pdfplumber      → extract_pdf_text()
+#   gspread         → _get_sheets_client()
+#   google-auth-*   → connect_gmail(), _get_sheets_client()
+
+_GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.compose",
+]
+
+_log = logging.getLogger("gaos.core")
+logging.basicConfig(
+    format="%(asctime)s  %(name)s  %(levelname)s  %(message)s",
+    level=logging.INFO,
+)
+
+_sheets_client = None
+
+
+def load_config(path="config.json") -> dict:
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception as exc:
+        _log.error("load_config failed: %s", exc)
+        return {}
+
+
+def get_logger(name: str) -> logging.Logger:
+    logger = logging.getLogger(f"gaos.{name}")
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s  %(name)s  %(levelname)s  %(message)s")
+        )
+        logger.addHandler(handler)
+    logger.propagate = False
+    return logger
+
+
+def connect_gmail():
+    try:
+        from google.auth.transport.requests import Request
+        from google.oauth2.credentials import Credentials
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        from googleapiclient.discovery import build
+
+        creds = None
+        if os.path.exists("token.json"):
+            creds = Credentials.from_authorized_user_file("token.json", _GMAIL_SCOPES)
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    "credentials.json", _GMAIL_SCOPES
+                )
+                creds = flow.run_local_server(port=0)
+            with open("token.json", "w", encoding="utf-8") as token_file:
+                token_file.write(creds.to_json())
+        return build("gmail", "v1", credentials=creds)
+    except Exception as exc:
+        _log.error("connect_gmail failed: %s", exc)
+        return None
+
+
+def gmail_send(gmail, to: str, from_addr: str, subject: str, body: str):
+    try:
+        msg = MIMEText(body)
+        msg["to"] = to
+        msg["from"] = from_addr
+        msg["subject"] = subject
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        gmail.users().messages().send(userId="me", body={"raw": raw}).execute()
+    except Exception as exc:
+        _log.error("gmail_send failed: %s", exc)
+
+
+def gmail_search(gmail, query: str, max_results: int = 25) -> list:
+    try:
+        result = (
+            gmail.users()
+            .messages()
+            .list(userId="me", q=query, maxResults=max_results)
+            .execute()
+        )
+        return result.get("messages", [])
+    except Exception as exc:
+        _log.error("gmail_search failed: %s", exc)
+        return []
+
+
+def gmail_get_message(gmail, message_id: str):
+    try:
+        msg = (
+            gmail.users()
+            .messages()
+            .get(userId="me", id=message_id, format="full")
+            .execute()
+        )
+        headers_list = msg.get("payload", {}).get("headers", [])
+        headers_dict = {h["name"]: h["value"] for h in headers_list}
+        body_text = gmail_get_body_text(msg)
+        return headers_dict, body_text
+    except Exception as exc:
+        _log.error("gmail_get_message failed: %s", exc)
+        return {}, ""
+
+
+def gmail_get_body_text(msg: dict) -> str:
+    try:
+        def _extract(payload):
+            mime = payload.get("mimeType", "")
+            if mime == "text/plain":
+                data = payload.get("body", {}).get("data", "")
+                if data:
+                    return base64.urlsafe_b64decode(data + "==").decode(
+                        "utf-8", errors="replace"
+                    )
+            parts = payload.get("parts", [])
+            for part in parts:
+                result = _extract(part)
+                if result:
+                    return result
+            return ""
+
+        return _extract(msg.get("payload", {}))
+    except Exception as exc:
+        _log.error("gmail_get_body_text failed: %s", exc)
+        return ""
+
+
+def gmail_download_pdf(gmail, message_id: str):
+    try:
+        msg = (
+            gmail.users()
+            .messages()
+            .get(userId="me", id=message_id, format="full")
+            .execute()
+        )
+
+        def _iter_parts(payload):
+            yield payload
+            for part in payload.get("parts", []):
+                yield from _iter_parts(part)
+
+        for part in _iter_parts(msg.get("payload", {})):
+            mime = part.get("mimeType", "")
+            filename = part.get("filename", "")
+            is_pdf = mime == "application/pdf" or (
+                filename and filename.lower().endswith(".pdf")
+            )
+            if not is_pdf:
+                continue
+            attachment_id = part.get("body", {}).get("attachmentId")
+            if not attachment_id:
+                data = part.get("body", {}).get("data", "")
+                if data:
+                    return base64.urlsafe_b64decode(data + "=="), filename or "attachment.pdf"
+                continue
+            att = (
+                gmail.users()
+                .messages()
+                .attachments()
+                .get(userId="me", messageId=message_id, id=attachment_id)
+                .execute()
+            )
+            pdf_bytes = base64.urlsafe_b64decode(att["data"] + "==")
+            return pdf_bytes, filename or "attachment.pdf"
+        return None, None
+    except Exception as exc:
+        _log.error("gmail_download_pdf failed: %s", exc)
+        return None, None
+
+
+def gmail_create_draft(gmail, to: str, subject: str, body: str):
+    try:
+        profile = gmail.users().getProfile(userId="me").execute()
+        from_addr = profile.get("emailAddress", "me")
+        msg = MIMEText(body)
+        msg["to"] = to
+        msg["from"] = from_addr
+        msg["subject"] = subject
+        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        gmail.users().drafts().create(
+            userId="me", body={"message": {"raw": raw}}
+        ).execute()
+    except Exception as exc:
+        _log.error("gmail_create_draft failed: %s", exc)
+
+
+def gmail_mark_read(gmail, message_id: str):
+    try:
+        gmail.users().messages().modify(
+            userId="me",
+            id=message_id,
+            body={"removeLabelIds": ["UNREAD"]},
+        ).execute()
+    except Exception as exc:
+        _log.error("gmail_mark_read failed: %s", exc)
+
+
+def gmail_label(gmail, message_id: str, label_name: str):
+    try:
+        existing = gmail.users().labels().list(userId="me").execute().get("labels", [])
+        label_id = None
+        for lbl in existing:
+            if lbl["name"].lower() == label_name.lower():
+                label_id = lbl["id"]
+                break
+        if not label_id:
+            created = gmail.users().labels().create(
+                userId="me", body={"name": label_name}
+            ).execute()
+            label_id = created["id"]
+        gmail.users().messages().modify(
+            userId="me",
+            id=message_id,
+            body={"addLabelIds": [label_id]},
+        ).execute()
+    except Exception as exc:
+        _log.error("gmail_label failed: %s", exc)
+
+
+def ask_deepseek(
+    api_key: str,
+    prompt: str,
+    max_tokens: int = 500,
+    expect_json: bool = True,
+    system: str = None,
+):
+    url = "https://api.deepseek.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    payload = {
+        "model": "deepseek-chat",
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.2,
+    }
+    if expect_json:
+        payload["response_format"] = {"type": "json_object"}
+
+    for attempt in range(3):
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+            if not expect_json:
+                return content
+            cleaned = re.sub(r"^```(?:json)?\s*", "", content.strip())
+            cleaned = re.sub(r"\s*```$", "", cleaned)
+            return json.loads(cleaned)
+        except Exception as exc:
+            _log.error("ask_deepseek attempt %d failed: %s", attempt + 1, exc)
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+    return {} if expect_json else ""
+
+
+def chat_deepseek(
+    api_key: str,
+    messages: list,
+    system_prompt: str = None,
+    max_tokens: int = 500,
+) -> str:
+    url = "https://api.deepseek.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    full_messages = []
+    if system_prompt:
+        full_messages.append({"role": "system", "content": system_prompt})
+    full_messages.extend(messages)
+    payload = {
+        "model": "deepseek-chat",
+        "messages": full_messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.4,
+    }
+    for attempt in range(3):
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=60)
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"]
+        except Exception as exc:
+            _log.error("chat_deepseek attempt %d failed: %s", attempt + 1, exc)
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+    return ""
+
+
+def _get_sheets_client():
+    global _sheets_client
+    if _sheets_client is not None:
+        return _sheets_client
+    try:
+        import gspread
+        from google.auth.transport.requests import Request
+        from google.oauth2 import service_account
+        from google.oauth2.credentials import Credentials
+
+        _SHEETS_SCOPES = [
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/drive",
+        ]
+        if os.path.exists("service_account.json"):
+            creds = service_account.Credentials.from_service_account_file(
+                "service_account.json", scopes=_SHEETS_SCOPES
+            )
+            _sheets_client = gspread.authorize(creds)
+            return _sheets_client
+        if os.path.exists("token.json"):
+            oauth_creds = Credentials.from_authorized_user_file(
+                "token.json", scopes=_SHEETS_SCOPES
+            )
+            if oauth_creds.expired and oauth_creds.refresh_token:
+                oauth_creds.refresh(Request())
+            _sheets_client = gspread.authorize(oauth_creds)
+            return _sheets_client
+        _log.error("_get_sheets_client: neither service_account.json nor token.json found")
+        return None
+    except Exception as exc:
+        _log.error("_get_sheets_client failed: %s", exc)
+        return None
+
+
+def sheets_read_all(sheet_id: str, tab_name: str) -> list:
+    try:
+        gc = _get_sheets_client()
+        ws = gc.open_by_key(sheet_id).worksheet(tab_name)
+        return ws.get_all_records(default_blank="")
+    except Exception as exc:
+        _log.error("sheets_read_all failed: %s", exc)
+        return []
+
+
+def sheets_append_row(sheet_id: str, tab_name: str, row_values: list):
+    try:
+        gc = _get_sheets_client()
+        ws = gc.open_by_key(sheet_id).worksheet(tab_name)
+        ws.append_row(row_values, value_input_option="USER_ENTERED")
+    except Exception as exc:
+        _log.error("sheets_append_row failed: %s", exc)
+
+
+def sheets_update_cell(sheet_id: str, tab_name: str, row_index: int, col, value: str):
+    try:
+        gc = _get_sheets_client()
+        ws = gc.open_by_key(sheet_id).worksheet(tab_name)
+        if isinstance(col, str):
+            headers = ws.row_values(1)
+            col_idx = headers.index(col) + 1
+        else:
+            col_idx = col
+        ws.update_cell(row_index, col_idx, value)
+    except Exception as exc:
+        _log.error("sheets_update_cell failed: %s", exc)
+
+
+def send_sms(
+    account_sid: str,
+    auth_token: str,
+    from_number: str,
+    to_number: str,
+    body: str,
+):
+    try:
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+        requests.post(
+            url,
+            auth=(account_sid, auth_token),
+            data={"From": from_number, "To": to_number, "Body": body},
+            timeout=30,
+        ).raise_for_status()
+    except Exception as exc:
+        _log.error("send_sms failed: %s", exc)
+
+
+def send_whatsapp(
+    account_sid: str,
+    auth_token: str,
+    from_number: str,
+    to_number: str,
+    body: str,
+):
+    try:
+        if not from_number.startswith("whatsapp:"):
+            from_number = f"whatsapp:{from_number}"
+        if not to_number.startswith("whatsapp:"):
+            to_number = f"whatsapp:{to_number}"
+        body = body[:1600]
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+        requests.post(
+            url,
+            auth=(account_sid, auth_token),
+            data={"From": from_number, "To": to_number, "Body": body},
+            timeout=30,
+        ).raise_for_status()
+    except Exception as exc:
+        _log.error("send_whatsapp failed: %s", exc)
+
+
+def post_to_slack(webhook_url: str, message: str):
+    try:
+        requests.post(
+            webhook_url,
+            json={"text": message},
+            timeout=15,
+        ).raise_for_status()
+    except Exception as exc:
+        _log.error("post_to_slack failed: %s", exc)
+
+
+def extract_pdf_text(pdf_bytes: bytes) -> str:
+    try:
+        import pdfplumber
+        pages = []
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    pages.append(text)
+        return "\n".join(pages)
+    except Exception as exc:
+        _log.error("extract_pdf_text failed: %s", exc)
+        return ""
+
+
+def archive_file(archive_folder: str, content: bytes, filename: str):
+    try:
+        folder = Path(archive_folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / filename
+        if target.exists():
+            stem = target.stem
+            suffix = target.suffix
+            counter = 1
+            while target.exists():
+                target = folder / f"{stem}_{counter}{suffix}"
+                counter += 1
+        target.write_bytes(content)
+    except Exception as exc:
+        _log.error("archive_file failed: %s", exc)
+
+
+def safe_text(value, default: str = "") -> str:
+    try:
+        if value is None or value == "":
+            return default
+        return str(value).strip() or default
+    except Exception:
+        return default
+
+
+def timestamp() -> str:
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def twiml_gather(prompt_text: str, action_url: str) -> str:
+    safe_prompt = prompt_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    safe_url = action_url.replace("&", "&amp;")
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<Response>"
+        f'<Gather input="speech" speechTimeout="auto" language="en-GB" action="{safe_url}">'
+        f'<Say voice="Polly.Amy">{safe_prompt}</Say>'
+        "</Gather>"
+        "</Response>"
+    )
+
+
+def twiml_say_hangup(text: str) -> str:
+    safe_t = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<Response>"
+        f'<Say voice="Polly.Amy">{safe_t}</Say>'
+        "<Hangup/>"
+        "</Response>"
+    )

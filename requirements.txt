@@ -1,0 +1,13 @@
+# GAOS™ v2.1 — Python Dependencies
+# Install with:  pip install -r requirements.txt
+# Runs free on Railway.app or Oracle Cloud Always Free tier.
+
+requests==2.31.0                  # API calls: DeepSeek, Twilio, Slack
+pdfplumber==0.10.3                # Reading text from PDF invoices
+gspread==6.0.2                    # Google Sheets read/write
+google-auth==2.29.0               # Google OAuth2 authentication
+google-auth-oauthlib==1.2.0       # Gmail OAuth login flow
+google-auth-httplib2==0.2.0       # Google HTTP transport
+google-api-python-client==2.126.0 # Gmail API client
+flask==3.0.2                      # Web server for conversational modules (22-24)
+gunicorn==21.2.0                  # Production server for Railway/Oracle deployment
