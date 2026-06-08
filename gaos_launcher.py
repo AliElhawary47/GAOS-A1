@@ -3,7 +3,7 @@
 ║   GAOS™ LAUNCHER v3.2                                       ║
 ║   Aether Frameworks                                         ║
 ║                                                             ║
-║   33 modules across 8 operational zones.                    ║
+║   34 modules across 9 operational zones.                    ║
 ║                                                             ║
 ║   Run a virtual role:                                       ║
 ║     python gaos_launcher.py admin          # Virtual Admin  ║
@@ -39,6 +39,7 @@ ZONES = {
     "Zone 0 — Sense":         ["29","30","31"],
     "Zone 7 — Marketer":      ["32","33","34"],
     "Zone 8 — Chief of Staff":["35"],
+    "Zone 9 — Utility":       ["36"],
 }
 
 # Modules 09 (Proposal Chaser) and 11 (Document Chaser) were merged
@@ -78,6 +79,7 @@ MODULE_FILES = {
     "33": "modules.module_33_review_monitor",
     "34": "modules.module_34_campaign_digest",
     "35": "modules.module_35_chief_of_staff",
+    "36": "modules.module_36_cost_rollup",
 }
 
 MODULE_NAMES = {
@@ -114,6 +116,7 @@ MODULE_NAMES = {
     "33": "Review Monitor",
     "34": "Campaign Digest",
     "35": "AI Chief of Staff",
+    "36": "Cost Rollup Reporter",
 }
 
 # ── ROLE → MODULE MAPPING (Virtual Team model) ────────────────
@@ -136,7 +139,7 @@ ROLES = {
     "finance": {
         "name":    "Virtual Finance",
         "tagline": "Invoicing, chasing, financial reports",
-        "modules": ["08","13","14","16","19","20"],   # 08 covers payment chasing
+        "modules": ["08","13","14","16","19","20","36"],  # 36 = monthly cost report
         "price":   249,
     },
     "receptionist": {
@@ -165,8 +168,8 @@ VOICE_ADDON_MODULE = "24"
 FULL_TEAM_ROLES   = list(ROLES.keys())
 FULL_TEAM_PRICE   = 999    # vs £1,194 individually
 FULL_TEAM_MODULES = list(dict.fromkeys(
-    [m for r in ROLES.values() for m in r["modules"]] + [VOICE_ADDON_MODULE]
-))  # de-duped (module 08 appears in admin, sales, and finance)
+    [m for r in ROLES.values() for m in r["modules"]] + [VOICE_ADDON_MODULE, "36"]
+))  # de-duped (module 08 appears in admin, sales, and finance; 36 always included)
 
 SETUP_FEES = {"1 role": 400, "2-3 roles": 900, "Full Team": 1600}
 
@@ -188,6 +191,7 @@ STANDALONE_PRICES = {
     "22":"£1,400","23":"£1,600","24":"£2,200",
     "25":"£550","26":"£650","27":"£900","28":"£750","29":"£700",
     "30":"£750","31":"£600","32":"£850","33":"£700","34":"£600","35":"£1,200",
+    "36":"£350",
 }
 
 
@@ -250,7 +254,7 @@ def list_modules():
 def main():
     print("\n" + "═"*60)
     print("  GAOS™ v3.2 — Ghost Assistant Operating System")
-    print("  Aether Frameworks — 33 Modules | 6 Virtual Roles")
+    print("  Aether Frameworks — 34 Modules | 6 Virtual Roles")
     print("═"*60)
 
     args = sys.argv[1:]

@@ -1,7 +1,7 @@
 """
-GAOS™ Shared Runtime Library
-=============================
-Centralised helpers used by all 35 GAOS modules via ``import gaos_core as core``.
+GAOS™ Shared Runtime Library  v3.2
+====================================
+Centralised helpers used by all 33+ GAOS modules via ``import gaos_core as core``.
 
 Required credential files (place in the project root):
   credentials.json   — Google OAuth2 client secrets (Desktop app type).
@@ -54,6 +54,27 @@ def load_config(path="config.json") -> dict:
     except Exception as exc:
         _log.error("load_config failed: %s", exc)
         return {}
+
+
+def get_secret(key_path: str, default=None):
+    """Dot-path lookup into config.json.
+    e.g. get_secret('deepseek.api_key') → cfg['deepseek']['api_key']
+    Falls back to env vars: DEEPSEEK_API_KEY for 'deepseek.api_key'.
+    """
+    # Try environment variable first (KEY_PATH → SCREAMING_SNAKE)
+    env_key = key_path.replace(".", "_").upper()
+    env_val = os.environ.get(env_key)
+    if env_val:
+        return env_val
+    cfg = load_config()
+    parts = key_path.split(".")
+    node = cfg
+    try:
+        for part in parts:
+            node = node[part]
+        return node
+    except (KeyError, TypeError):
+        return default
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -259,21 +280,26 @@ def ask_deepseek(
     expect_json: bool = True,
     system: str = None,
 ):
+    """Routes through gaos_ai (DeepSeek primary → Groq fallback).
+    api_key accepted for backward compat but provider keys come from config/env.
+    """
+    try:
+        import gaos_ai
+        return gaos_ai.ask_ai(prompt, api_key=api_key, max_tokens=max_tokens,
+                               expect_json=expect_json, system=system)
+    except ImportError:
+        pass
+    # Bare fallback when gaos_ai is unavailable
     url = "https://api.deepseek.com/v1/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
-    payload = {
-        "model": "deepseek-chat",
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": 0.2,
-    }
+    payload = {"model": "deepseek-chat", "messages": messages,
+               "max_tokens": max_tokens, "temperature": 0.2}
     if expect_json:
         payload["response_format"] = {"type": "json_object"}
-
     for attempt in range(3):
         try:
             resp = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -297,18 +323,21 @@ def chat_deepseek(
     system_prompt: str = None,
     max_tokens: int = 500,
 ) -> str:
+    """Routes through gaos_ai (DeepSeek primary → Groq fallback)."""
+    try:
+        import gaos_ai
+        return gaos_ai.chat_ai(messages, api_key=api_key,
+                                system_prompt=system_prompt, max_tokens=max_tokens)
+    except ImportError:
+        pass
     url = "https://api.deepseek.com/v1/chat/completions"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     full_messages = []
     if system_prompt:
         full_messages.append({"role": "system", "content": system_prompt})
     full_messages.extend(messages)
-    payload = {
-        "model": "deepseek-chat",
-        "messages": full_messages,
-        "max_tokens": max_tokens,
-        "temperature": 0.4,
-    }
+    payload = {"model": "deepseek-chat", "messages": full_messages,
+               "max_tokens": max_tokens, "temperature": 0.4}
     for attempt in range(3):
         try:
             resp = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -586,3 +615,72 @@ def load_chatbot_knowledge(cfg: dict) -> str:
     except Exception as exc:
         _log.error("load_chatbot_knowledge failed: %s", exc)
         return ""
+
+
+# ── AUDIT & USAGE LOGGING ─────────────────────────────────────────
+
+def log_action(cfg: dict, module: str, action: str, status: str = "ok",
+               detail: str = "") -> None:
+    """Appends one row to the Actions_Log sheet tab.
+    Called by any module after completing a significant action."""
+    try:
+        sheet_id = cfg["google_sheets"]["sheet_id"]
+        tab      = cfg["google_sheets"]["tabs"].get("actions_log", "Actions_Log")
+        sheets_append_row(sheet_id, tab,
+                          [timestamp(), module, action, status, detail[:250]])
+    except Exception as exc:
+        _log.warning("log_action failed: %s", exc)
+
+
+def log_usage(cfg: dict, module: str, tokens: int, cost_gbp: float = 0.0) -> None:
+    """Appends one row to the Usage_Log sheet tab.
+    Called automatically by gaos_ai on every AI call."""
+    try:
+        sheet_id = cfg["google_sheets"]["sheet_id"]
+        tab      = cfg["google_sheets"]["tabs"].get("usage_log", "Usage_Log")
+        sheets_append_row(sheet_id, tab,
+                          [timestamp(), module, tokens, round(cost_gbp, 6)])
+    except Exception as exc:
+        _log.warning("log_usage failed: %s", exc)
+
+
+# ── SHEET UTILITIES ───────────────────────────────────────────────
+
+def sheets_find_or_create_tab(sheet_id: str, tab_name: str,
+                               headers: list = None) -> None:
+    """Ensures a sheet tab exists.  Creates it with optional header row if missing.
+    Safe to call on every startup — does nothing when tab already exists."""
+    try:
+        gc = _get_sheets_client()
+        ss = gc.open_by_key(sheet_id)
+        existing = [ws.title for ws in ss.worksheets()]
+        if tab_name not in existing:
+            ws = ss.add_worksheet(title=tab_name, rows=200, cols=20)
+            if headers:
+                ws.append_row(headers)
+            _log.info("Created sheet tab: %s", tab_name)
+    except Exception as exc:
+        _log.warning("sheets_find_or_create_tab failed for %s: %s", tab_name, exc)
+
+
+# ── SYSTEM STATS ──────────────────────────────────────────────────
+
+def get_memory_usage_mb() -> float:
+    """Returns current process RSS memory in MB.  Requires psutil."""
+    try:
+        import psutil, os as _os
+        return psutil.Process(_os.getpid()).memory_info().rss / 1_048_576
+    except Exception:
+        return 0.0
+
+
+def get_system_stats() -> dict:
+    """Returns a snapshot of system resource usage for the dashboard."""
+    stats: dict = {"memory_mb": round(get_memory_usage_mb(), 1)}
+    try:
+        import psutil
+        stats["disk_usage_percent"] = psutil.disk_usage(".").percent
+        stats["cpu_percent"]        = psutil.cpu_percent(interval=0.1)
+    except Exception:
+        pass
+    return stats

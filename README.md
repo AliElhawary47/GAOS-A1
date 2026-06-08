@@ -1,111 +1,228 @@
-# GAOS™ v3.0 — Ghost Assistant Operating System
+# GAOS™ v3.2 — Ghost Assistant Operating System
+### Aether Frameworks Ltd
 
-A Python automation platform that runs as a **virtual team** for UK small businesses. 35 AI-powered modules handle admin, sales, finance, appointments, marketing, and business intelligence — autonomously, around the clock.
+A modular business automation platform that watches a client's email, runs AI on what it sees, and executes back-office actions automatically — 24 hours a day, without staff. No per-seat licence. Client owns the system.
 
-Built by **Aether Frameworks**.
-
----
-
-## Virtual Roles
-
-| Role | Modules | Price |
-|---|---|---|
-| Virtual Admin | Invoice Scanner, Contract Sender, FAQ Reply, Team Broadcaster, Document Chaser, Document Sentinel | £199/mo |
-| Virtual Sales | Lead Catcher, Urgent Alert, Review Requester, Proposal Chaser, Pipeline Report | £199/mo |
-| Virtual Finance | Payment Chaser, Daily Digest, Revenue Snapshot, Timesheet Summary, Invoice Generator, Expiry Alert | £249/mo |
-| Virtual Receptionist | Appointment Reminder, No-Show Follow-Up, Website Chatbot, WhatsApp AI Agent | £299/mo |
-| Virtual Marketer | Birthday Mailer, Social Scheduler, Re-Engagement Mailer, Newsletter Mailer, Review Monitor, Campaign Digest | £199/mo |
-| Virtual Intelligence | GAOS Learn, Client Pulse, Planning Radar, Gazette Monitor, Land Registry Radar, Rate & Macro Pulse, AI Chief of Staff | £149/mo |
-| AI Voice Agent | Answers inbound calls via Twilio | £99/mo add-on |
-| **Full Team** | All 35 modules | **£999/mo** |
+**v3.2 adds:** AI provider failover (DeepSeek → Groq free tier), module consolidation (35→34 modules), `run_loop` / `should_run_at` helpers, unified chaser, monthly cost reporting, and industry pack installer.
 
 ---
 
-## Quickstart
+## Virtual Team Model
 
-### 1. Install dependencies
+Six role-based subscription bundles. Mix and match — no forced tiers.
+
+| Role | Price | Modules | What it does |
+|------|-------|---------|--------------|
+| **Virtual Admin** | £199/mo | 01 05 06 07 08 27 | Invoices, contracts, FAQ, documents |
+| **Virtual Sales** | £199/mo | 02 03 04 08 15 | Leads, proposals, reviews, pipeline |
+| **Virtual Finance** | £249/mo | 08 13 14 16 19 20 36 | Chasing, reports, invoicing, costs |
+| **Virtual Receptionist** | £299/mo | 10 12 22 23 | Appointments, chatbot, WhatsApp |
+| **+ AI Voice Agent** | +£99/mo | 24 | Inbound phone handling (add-on) |
+| **Virtual Marketer** | £199/mo | 17 18 21 32 33 34 | Social, newsletter, reviews, re-engagement |
+| **Virtual Intelligence** | £149/mo | 25 26 28 29 30 31 35 | Business memory, market radar, briefings |
+| **Full Team** | **£999/mo** | All 34 modules | Everything — save £195/mo vs individual |
+
+**Setup fees:** £400 (1 role) · £900 (2–3 roles) · £1,600 (Full Team)
+
+---
+
+## Quick Start
+
 ```bash
+# 1. Install dependencies
 pip install -r requirements.txt
-```
 
-### 2. Google credentials
-
-**Gmail** — download `credentials.json` from Google Cloud Console (OAuth2 Desktop App). On first run, GAOS opens a browser to authorise and saves `token.json` automatically.
-
-**Google Sheets** — create a `service_account.json` (Service Account key) with Sheets Editor access on the target spreadsheet. Falls back to `token.json` if absent.
-
-### 3. Configure
-```bash
+# 2. Configure
 cp config.example.json config.json
-# Fill in: DeepSeek API key, Google Sheet ID, Gmail addresses,
-#          Twilio credentials, Slack webhook, business details
+# edit config.json — fill in DeepSeek key, Groq key (free), Gmail, Sheets IDs
+
+# 3. Install an industry pack (creates all sheet tabs + pre-populates FAQs)
+python gaos_install.py --pack trades   # or legal / clinic / agency / property / accountancy
+
+# 4. Run the full system
+python gaos_launcher.py full_team
+
+# 5. Run a single role
+python gaos_launcher.py finance
+
+# 6. Run a single module
+python gaos_launcher.py module 08
 ```
 
-### 4. Run a role
-```bash
-python gaos_launcher.py admin          # Virtual Admin (6 modules)
-python gaos_launcher.py sales          # Virtual Sales (5 modules)
-python gaos_launcher.py finance        # Virtual Finance (6 modules)
-python gaos_launcher.py receptionist   # Virtual Receptionist (4 modules)
-python gaos_launcher.py marketer       # Virtual Marketer (6 modules)
-python gaos_launcher.py intelligence   # Virtual Intelligence (7 modules)
-python gaos_launcher.py full_team      # All 35 modules
-python gaos_launcher.py module 08      # Single module a la carte
-python gaos_launcher.py list           # Show all modules and pricing
+First run opens a browser once to approve Gmail access. See **docs/SETUP.md** for the complete walkthrough.
+
+---
+
+## Industry Packs
+
+Pre-configured setups for six verticals. Installed in under a minute.
+
+| Pack | Target businesses | Key extras |
+|------|------------------|------------|
+| `trades` | Plumbers, electricians, builders, roofers | Gas Safe licences, trade FAQ, material quotes |
+| `legal` | Solicitors, conveyancers, paralegals | Case log, deadline tracker, SRA compliance |
+| `clinic` | GP practices, dentists, physio | Patient recalls, CQC, appointment-heavy |
+| `agency` | Marketing, design, PR firms | Retainer billing, social scheduling |
+| `property` | Estate agents, letting agents | Property listings, viewings, landlord compliance |
+| `accountancy` | Accountants, bookkeepers, tax advisors | Tax deadlines, MTD, recurring billing |
+
+Each pack includes: pre-populated FAQ knowledge base, licence-expiry seed data, industry-specific contract template, and correct sheet tab names.
+
+---
+
+## The 34 Modules
+
+### Zone 1 — React (email-triggered, every poll)
+| # | Module | What it does |
+|---|--------|-------------|
+| 01 | Invoice Scanner | Extracts data from PDF invoices, logs to Sheets |
+| 02 | Lead Catcher | Detects enquiry emails, drafts reply, pings owner on WhatsApp |
+| 03 | Urgent Lead Alert | High-value leads → instant SMS to owner |
+| 04 | Review Requester | Sends review link after completed jobs |
+| 05 | Contract Sender | Auto-generates and emails service agreements |
+| 06 | FAQ Auto-Reply | Drafts replies to common questions from knowledge base |
+| 07 | Team Broadcaster | Centralised Slack / email team notifications |
+
+### Zone 2 — Chase (condition-driven, every poll)
+| # | Module | Threshold |
+|---|--------|----------|
+| 08 | Unified Item Chaser | Payments (14d) · Proposals (5d) · Documents (3d) |
+| 10 | Appointment Reminder | 24h + 2h before |
+| 12 | No-Show Follow-Up | Day-of missed appointments |
+
+### Zone 3 — Report (timed)
+| # | Module | Schedule |
+|---|--------|---------|
+| 13 | Daily Digest | Daily 08:00 |
+| 14 | Weekly Revenue Snapshot | Monday 08:00 |
+| 15 | Lead Pipeline Report | Friday 17:00 |
+| 16 | Staff Timesheet Summary | Friday 18:00 |
+
+### Zone 4 — Schedule (timed)
+| # | Module | Schedule |
+|---|--------|---------|
+| 17 | Birthday & Anniversary Mailer | Daily 09:00 |
+| 18 | Social Post Scheduler | Every poll |
+| 19 | Monthly Invoice Generator | 1st of month 08:00 |
+| 20 | Licence & Expiry Alert | Daily 09:00 |
+| 21 | Re-Engagement Mailer | Monday 10:00 |
+
+### Zone 5 — Converse (Flask server, webhook-driven)
+| # | Module | Description |
+|---|--------|------------|
+| 22 | Website Chatbot | Embeddable AI chat widget |
+| 23 | WhatsApp AI Agent | Two-way WhatsApp conversations |
+| 24 | AI Voice Agent | Inbound phone calls (Voice add-on) |
+
+### Zone 6 — Learn (timed)
+| # | Module | Schedule |
+|---|--------|---------|
+| 25 | GAOS Learn | Monday 07:00 — adaptive business memory |
+| 26 | Client Pulse | Monday 07:30 — silence-gap relationship radar |
+| 27 | Document Sentinel | Every poll — compliance document watch |
+| 28 | Planning Radar | Monday 08:00 — nearby planning applications |
+
+### Zone 0 — Sense (external data)
+| # | Module | Schedule |
+|---|--------|---------|
+| 29 | Gazette Monitor | Daily 07:00 — insolvency / strike-off notices |
+| 30 | Land Registry Radar | Monday 09:00 — new property sales = leads |
+| 31 | Rate & Macro Pulse | Daily 12:00 + 1st of month — BoE rate + ONS CPI |
+
+### Zone 7 — Marketer
+| # | Module | Schedule |
+|---|--------|---------|
+| 32 | Newsletter Mailer | First Monday of month 09:00 |
+| 33 | Review Monitor | Every poll |
+| 34 | Campaign Digest | Friday 17:00 |
+
+### Zone 8 — Chief of Staff
+| # | Module | Schedule |
+|---|--------|---------|
+| 35 | AI Chief of Staff | Daily 07:30 briefing + Monday 07:45 weekly summary |
+
+### Zone 9 — Utility
+| # | Module | Schedule |
+|---|--------|---------|
+| 36 | Cost Rollup Reporter | 1st of month 09:00 — AI cost + margin report |
+
+---
+
+## AI Failover
+
+GAOS uses two AI providers with automatic failover so AI features never go dark:
+
+```
+core.ask_deepseek() / core.chat_deepseek()
+          │
+          ▼
+      gaos_ai.py
+          │
+          ├── DeepSeek (primary)   deepseek-chat, ~£2–5/month
+          │       Circuit breaker: 5 failures → 10-min cooldown
+          │
+          └── Groq (fallback)      llama-3.3-70b, FREE TIER
+                  Circuit breaker: 5 failures → 5-min cooldown
 ```
 
-### 5. Start the web server (for chatbot, WhatsApp, voice)
-```bash
-python gaos_server.py
-# Production:
-gunicorn gaos_server:app
+All 34 modules inherit failover automatically — zero code changes needed.
+Add your free Groq key at `groq.com` → paste into `config.json` under `"groq": { "api_key": "gsk_..." }`.
+
+---
+
+## File Structure
+
+```
+GAOS/
+  gaos_core.py           — Shared runtime: Gmail, Sheets, AI, Twilio, scheduling
+  gaos_ai.py             — AI Provider Manager: DeepSeek + Groq failover
+  gaos_launcher.py       — Role definitions, module registry, CLI entry point
+  gaos_server.py         — Flask server: chatbot, WhatsApp, voice, dashboard
+  gaos_install.py        — Industry pack installer
+  industry_packs.json    — 6 industry configurations (FAQ + licences + contracts)
+  config.example.json    — Config template (copy to config.json)
+  requirements.txt       — Python dependencies
+
+  modules/
+    module_01_invoice_scanner.py  ...  module_36_cost_rollup.py
+
+  deploy/
+    Procfile               Railway / Heroku
+    railway.toml           Railway config
+    gaos.service           systemd service file
+    FREE_SERVER_GUIDE.md   Oracle Cloud always-free setup
+    CHATBOT_EMBED.md       How to embed the chatbot widget
+
+  docs/
+    SETUP.md               Step-by-step setup guide (~30 mins)
+    PRICING.md             Pricing structure and ROI calculator
 ```
 
 ---
 
-## Conversational Modules (web server required)
+## Chatbot Widget Embed
 
-| Module | Route | Description |
-|---|---|---|
-| 22 — Website Chatbot | `POST /chat` | AI chatbot on your website via embeddable widget |
-| 23 — WhatsApp AI Agent | `POST /whatsapp` | Twilio webhook — AI replies to WhatsApp messages |
-| 24 — AI Voice Agent | `POST /voice` + `/voice/handle` | Twilio webhook — AI answers inbound phone calls |
+One line on any website to enable the AI chatbot:
 
-**Embed the chatbot widget on any webpage:**
 ```html
-<script src="https://your-gaos-server.railway.app/widget.js"
-        data-gaos-url="https://your-gaos-server.railway.app"
-        data-business-name="Your Business Name">
-</script>
+<script src="https://your-server.up.railway.app/widget.js"
+        data-gaos-url="https://your-server.up.railway.app"
+        data-business-name="Your Business"></script>
 ```
 
 ---
 
-## Google Sheet Tabs Required
+## Key Design Principles
 
-Create one Google Sheet with these tabs (names configurable in `config.json`):
-
-`Invoice_Log` · `Lead_Log` · `Completed_Jobs` · `Contract_Log` · `FAQ_Knowledge_Base` · `Appointments` · `Proposals` · `Pending_Documents` · `Clients` · `Social_Queue` · `Retainer_Clients` · `Licences` · `Timesheets` · `Chatbot_Knowledge` · `Sentinel_Actions` · `Newsletter_Queue` · `Reviews_Log` · `Campaign_Log` · `GAOS_Memory` · `Client_Pulse_Log`
-
----
-
-## Deploy to Railway
-
-See `deploy/FREE_SERVER_GUIDE.md` for full instructions.
-
-The `deploy/railway.toml` and `deploy/Procfile` are pre-configured:
-- `web` process: `gunicorn gaos_server:app` (chatbot, WhatsApp, voice)
-- `worker` process: `python gaos_launcher.py full_team` (all polling modules)
+1. **Modular** — Every module is independent and sellable standalone.
+2. **DRY** — All shared logic in `gaos_core.py` and `gaos_ai.py` — never duplicated.
+3. **Fault-isolated** — Each module runs as a separate `Process`; one crash cannot stop others.
+4. **Redundant** — AI failover (DeepSeek → Groq) means AI features never go dark.
+5. **Observable** — Every action logged to `Actions_Log`; AI usage logged to `Usage_Log`.
+6. **Client-owned** — Runs inside the client's own Gmail, Sheets, and Drive.
+7. **Low-cost** — DeepSeek keeps AI at fractions of a penny per task. Groq fallback is free.
+8. **Config-driven** — Roles defined by data; new bundles need zero new code.
 
 ---
 
-## Tech Stack
-
-- **AI**: DeepSeek (`deepseek-chat`, OpenAI-compatible API)
-- **Email**: Gmail API (OAuth2)
-- **Database**: Google Sheets via gspread
-- **SMS / WhatsApp / Voice**: Twilio REST API
-- **Team alerts**: Slack Incoming Webhooks
-- **PDF parsing**: pdfplumber
-- **Web server**: Flask + Gunicorn
-- **Free public data**: UK Planning Portal, Land Registry Price Paid, Bank of England IADB, ONS CPI, London Gazette
+*Aether Frameworks Ltd — GAOS™ v3.2*

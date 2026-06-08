@@ -1,7 +1,12 @@
 {
-  "_comment": "GAOS™ v3.0 config (35 modules). Copy to config.json and fill in real values. server.public_url is your Railway/Oracle URL, needed for Twilio webhooks and the chatbot widget.",
+  "_comment": "GAOS™ v3.2 config (34 modules + AI failover). Copy to config.json and fill in real values. Secrets can also be set as environment variables (e.g. DEEPSEEK_API_KEY).",
   "deepseek": {
-    "api_key": "YOUR_DEEPSEEK_KEY_HERE"
+    "api_key": "YOUR_DEEPSEEK_KEY_HERE",
+    "_comment": "Primary AI provider. Get key at: platform.deepseek.com  ~£2-5/month typical usage."
+  },
+  "groq": {
+    "api_key": "YOUR_GROQ_KEY_HERE",
+    "_comment": "FREE TIER fallback AI. Sign up at: groq.com — no credit card required. Auto-activated when DeepSeek is unavailable."
   },
   "gmail": {
     "watch_inbox": "YOUR_WATCH_INBOX@gmail.com",
@@ -32,7 +37,9 @@
       "reviews_log":       "Reviews_Log",
       "campaign_log":      "Campaign_Log",
       "memory":            "GAOS_Memory",
-      "pulse_log":         "Client_Pulse_Log"
+      "pulse_log":         "Client_Pulse_Log",
+      "actions_log":       "Actions_Log",
+      "usage_log":         "Usage_Log"
     }
   },
   "twilio": {
@@ -40,7 +47,7 @@
     "auth_token":    "YOUR_TWILIO_TOKEN_HERE",
     "from_number":   "+44XXXXXXXXXX",
     "owner_mobile":  "+44XXXXXXXXXX",
-    "whatsapp_from": "whatsapp:+44XXXXXXXXXX"
+    "whatsapp_from": "whatsapp:+14155238886"
   },
   "slack": {
     "webhook_url": "YOUR_SLACK_WEBHOOK_URL_HERE"
@@ -48,18 +55,13 @@
   "business": {
     "name":                 "Client Business Name",
     "google_review_link":   "https://g.page/r/YOUR_REVIEW_LINK",
-    "owner_name":           "Ahmed",
+    "owner_name":           "Your Name",
+    "owner_mobile":         "+44XXXXXXXXXX",
     "booking_link":         "https://calendly.com/yourbusiness",
-    "postcode":             "YOUR_POSTCODE",
-    "council_planning_url": ""
-  },
-  "settings": {
-    "check_every_seconds": 300,
-    "archive_folder":      "gaos_archive"
-  },
-  "server": {
-    "port":       8080,
-    "public_url": "https://your-gaos-server.up.railway.app"
+    "website":              "https://yourbusiness.co.uk",
+    "postcode":             "LS1 4AP",
+    "council_planning_url": "",
+    "type":                 "trades"
   },
   "active_roles": [
     "admin",
@@ -68,5 +70,18 @@
     "receptionist",
     "marketer",
     "intelligence"
-  ]
+  ],
+  "settings": {
+    "check_every_seconds":              300,
+    "archive_folder":                   "gaos_archive",
+    "heartbeat_file":                   "gaos_heartbeat.json",
+    "auto_restart_hours":               24,
+    "alert_after_consecutive_failures": 3,
+    "cost_tracking_enabled":            true,
+    "ai_failover_alert":                true
+  },
+  "server": {
+    "port":       8080,
+    "public_url": "https://your-gaos-server.up.railway.app"
+  }
 }
