@@ -52,7 +52,11 @@ def run_reengage_check(gmail, cfg):
         re_engaged  = str(row.get("Re-Engaged",        "")).strip().lower()
         notes       = str(row.get("Notes",             "")).strip()
 
+        status = str(row.get("Status", "active")).strip().lower()
         if not email or not name or re_engaged == "sent":
+            continue
+        if status in ("churned", "inactive", "cancelled", "lost", "do not contact"):
+            log.info(f"Skipping {name} — status: {status}")
             continue
 
         try:

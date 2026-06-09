@@ -93,6 +93,17 @@ def process_email(gmail, cfg, faq_text, message_id):
     else:
         # Not an FAQ — leave it unread so a human handles it
         log.info(f"No confident FAQ match for {sender} — left for staff.")
+        # Log the gap so the owner can add it to the knowledge base
+        try:
+            gaps_tab = cfg["google_sheets"]["tabs"].get("faq_gaps", "FAQ_Gaps")
+            core.sheets_append_row(cfg["google_sheets"]["sheet_id"], gaps_tab, [
+                subject[:120],
+                body_text[:200],
+                sender,
+                core.timestamp(),
+            ])
+        except Exception:
+            pass
         return False
 
 

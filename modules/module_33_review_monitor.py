@@ -144,6 +144,14 @@ def process_review_email(gmail, cfg, msg_id):
                 f"Post your response at: https://business.google.com\n\n"
                 f"Aether Frameworks — GAOS™ Review Monitor"
             )
+
+            # Also alert via Slack so the team sees it immediately
+            slack_url = cfg.get("slack", {}).get("webhook_url", "")
+            if slack_url and "YOUR_" not in slack_url:
+                core.post_to_slack(slack_url,
+                    f"⚠ *Negative review ({stars}★)* from {reviewer or 'a customer'}\n"
+                    f"{snippet[:150]}\n_Draft response ready — check your email._"
+                )
         else:
             # Save positive response as a draft
             core.gmail_send(

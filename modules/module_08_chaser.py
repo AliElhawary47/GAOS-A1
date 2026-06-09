@@ -22,11 +22,25 @@ Sheets required:
   Pending_Documents — Client Name | Client Email | Document Required | Requested Date | Received | Chased
 """
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Callable, List, Tuple
 
 import gaos_core as core
+
+
+def _get_late_payers(cfg) -> List[str]:
+    """Returns a lowercase list of vendor names learned as habitual late payers."""
+    try:
+        from modules import module_25_gaos_learn as learn
+        context = learn.get_context(cfg)
+        m = re.search(r"Suppliers with previous late payment chases: ([^\n.]+)", context)
+        if m:
+            return [n.strip().lower() for n in m.group(1).split(",") if n.strip()]
+    except Exception:
+        pass
+    return []
 
 log = core.get_logger("item_chaser")
 
@@ -199,7 +213,7 @@ def _current_chase_level(chased: str) -> int:
     return 1
 
 
-def check_and_chase(gmail, cfg, chaser: ChaseConfig) -> int:
+def check_and_chase(gmail, cfg, chaser: ChaseConfig, late_payers: List[str] = None) -> int:
     sheet_id  = cfg["google_sheets"]["sheet_id"]
     tab       = cfg["google_sheets"]["tabs"].get(chaser.tab_key, chaser.tab_key)
     rows      = core.sheets_read_all(sheet_id, tab)
@@ -228,8 +242,12 @@ def check_and_chase(gmail, cfg, chaser: ChaseConfig) -> int:
             # Already at max tier — nothing left to send
             if level >= len(chaser.escalation_days):
                 continue
-            # Next tier threshold not yet reached
-            if days_elapsed < chaser.escalation_days[level]:
+            # Known late payers: trigger first chase at 7 days instead of default threshold
+            threshold = chaser.escalation_days[level]
+            if level == 0 and late_payers and any(lp in name.lower() for lp in late_payers):
+                threshold = min(threshold, 7)
+                log.info(f"[{chaser.name}] Known late payer: {name} — using {threshold}-day threshold")
+            if days_elapsed < threshold:
                 continue
             next_level = level + 1
         else:
@@ -261,10 +279,11 @@ def check_and_chase(gmail, cfg, chaser: ChaseConfig) -> int:
 
 
 def run_all_chasers(gmail, cfg):
+    late_payers = _get_late_payers(cfg)
     total = 0
     for chaser in CHASERS:
         try:
-            n = check_and_chase(gmail, cfg, chaser)
+            n = check_and_chase(gmail, cfg, chaser, late_payers)
             if n:
                 log.info(f"[{chaser.name}] sent {n} chase(s).")
             total += n

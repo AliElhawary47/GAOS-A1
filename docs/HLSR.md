@@ -1,11 +1,11 @@
-# GAOS™ High-Level System Requirements — v3.2
+# GAOS™ High-Level System Requirements — v3.3
 
-**Document ID:** GAOS-HLSR-3.2  
+**Document ID:** GAOS-HLSR-3.3  
 **Product:** Ghost Assistant Operating System (GAOS™)  
 **Vendor:** Aether Frameworks Ltd  
 **Status:** Released  
-**Date:** 2026-06-08  
-**Revision:** 1.0  
+**Date:** 2026-06-09  
+**Revision:** 2.0  
 
 ---
 
@@ -26,11 +26,11 @@
 
 ### 1.1 Purpose
 
-This document defines the High-Level System Requirements (HLSR) for the Ghost Assistant Operating System (GAOS™) version 3.2. It establishes the functional capabilities, non-functional properties, constraints, and acceptance criteria that the system must satisfy. It is intended to serve as the authoritative requirements baseline for design, implementation, testing, and audit activities.
+This document defines the High-Level System Requirements (HLSR) for the Ghost Assistant Operating System (GAOS™) version 3.3. It establishes the functional capabilities, non-functional properties, constraints, and acceptance criteria that the system must satisfy. It is intended to serve as the authoritative requirements baseline for design, implementation, testing, and audit activities.
 
 GAOS™ is a modular, Python-based business automation platform designed to operate continuously inside a client's own Google account. The system watches a Gmail inbox, processes incoming email with artificial intelligence, and executes back-office actions automatically across nine operational zones covering administration, sales, finance, customer engagement, scheduling, conversational AI, business intelligence, external monitoring, and marketing.
 
-This document does not prescribe internal implementation details. Detailed component-level and module-level specifications are contained in the companion Low-Level System Requirements document (GAOS-LLSR-3.2).
+This document does not prescribe internal implementation details. Detailed component-level and module-level specifications are contained in the companion Low-Level System Requirements document (GAOS-LLSR-3.3).
 
 ### 1.2 Scope
 
@@ -242,7 +242,7 @@ Requirements are identified by a hierarchical identifier of the form `<TYPE>-<SE
 
 **Title:** React zone processing  
 **Priority:** Must  
-**Description:** The system SHALL implement a set of email-triggered modules that detect specific email types (PDF invoices, lead enquiries, urgent leads, completed-job markers, new contracts, FAQ questions, and broadcast triggers) and SHALL automatically execute the corresponding back-office actions (data extraction, draft reply creation, SMS/WhatsApp alerts, Sheets logging, label assignment) within one poll cycle of message arrival.  
+**Description:** The system SHALL implement a set of email-triggered modules that detect specific email types (PDF invoices, lead enquiries, urgent leads, completed-job markers, new contracts, FAQ questions, and broadcast triggers) and SHALL automatically execute the corresponding back-office actions (data extraction, AI lead scoring, draft reply creation, SMS/WhatsApp alerts, Sheets logging, label assignment) within one poll cycle of message arrival. The Invoice Scanner SHALL deduplicate incoming invoices against the Invoice_Log and flag amounts that are anomalously high relative to the vendor average stored in GAOS_Memory. The Lead Catcher SHALL classify each lead as Hot, Warm, or Cold using AI and store the score in Lead_Log. The FAQ Auto-Reply module SHALL log every unanswered question to a dedicated FAQ_Gaps tab so the owner can improve the knowledge base over time. The Team Broadcaster SHALL extract and highlight payment amounts from relevant notification emails.  
 **Rationale:** Zone 1 delivers the most immediately visible client value — the business owner sees automated activity within minutes of an email arriving. Delays longer than one poll cycle are commercially unacceptable.
 
 ---
@@ -251,8 +251,8 @@ Requirements are identified by a hierarchical identifier of the form `<TYPE>-<SE
 
 **Title:** Chase zone processing  
 **Priority:** Must  
-**Description:** The system SHALL implement automated follow-up for overdue invoices (14-day threshold), unanswered proposals (5-day threshold), outstanding documents (3-day threshold), appointment reminders (24-hour and 2-hour advance notice), and no-show follow-ups (same-day). The system SHALL prevent duplicate chase messages by marking processed rows in the relevant Sheets tab.  
-**Rationale:** Manual follow-up is the most time-consuming administrative task for small businesses. Automated chasing with duplicate prevention is a core differentiator.
+**Description:** The system SHALL implement automated follow-up for overdue invoices (escalating tiers at 14, 21, and 30 days — tone increases from polite reminder to firm follow-up to final notice, recorded as Sent-1/Sent-2/Sent-3), unanswered proposals (5-day threshold), outstanding documents (3-day threshold), appointment reminders (24-hour and 2-hour advance notice), and no-show follow-ups (same-day). The Payment Chaser SHALL accelerate the first-tier threshold to 7 days for vendors identified as habitual late payers in GAOS_Memory. A duplicate-send guard SHALL search the Gmail sent folder before every chase to prevent double-chasing if the owner already emailed manually. The Appointment Reminder module SHALL scan client replies for reschedule keywords and mark appointments accordingly, suppressing the reminder if a reschedule request is detected.  
+**Rationale:** Manual follow-up is the most time-consuming administrative task for small businesses. Escalating tone, adaptive thresholds, and duplicate prevention make the chase process both effective and professional.
 
 ---
 
@@ -260,7 +260,7 @@ Requirements are identified by a hierarchical identifier of the form `<TYPE>-<SE
 
 **Title:** Report zone processing  
 **Priority:** Must  
-**Description:** The system SHALL generate and email the following scheduled reports: a daily summary digest at 08:00, a weekly revenue snapshot every Monday at 08:00, a lead pipeline report every Friday at 17:00, and a staff timesheet summary every Friday at 18:00. Reports SHALL be generated from data in the relevant Google Sheets tabs and SHALL use AI to produce human-readable narratives.  
+**Description:** The system SHALL generate and email the following scheduled reports: a daily summary digest at 08:00, a weekly revenue snapshot every Monday at 08:00, a lead pipeline report every Friday at 17:00, and a staff timesheet summary every Friday at 18:00. Reports SHALL be generated from data in the relevant Google Sheets tabs and SHALL use AI to produce human-readable narratives. The Daily Digest SHALL additionally post to the configured Slack webhook (first 12 lines of the digest body) if `slack.webhook_url` is set.  
 **Rationale:** Management information reporting is a primary deliverable of the Virtual Finance and Virtual Intelligence roles. Timeliness (correct schedule) is as important as content accuracy.
 
 ---
@@ -269,7 +269,7 @@ Requirements are identified by a hierarchical identifier of the form `<TYPE>-<SE
 
 **Title:** Schedule zone processing  
 **Priority:** Must  
-**Description:** The system SHALL send birthday and anniversary emails daily at 09:00, schedule and post social content each poll cycle, generate monthly invoices for retainer clients on the 1st of each month at 08:00, send licence and compliance expiry alerts daily at 09:00, and send re-engagement emails to dormant contacts every Monday at 10:00.  
+**Description:** The system SHALL send birthday and anniversary emails daily at 09:00, schedule and post social content each poll cycle, generate monthly invoices for retainer clients on the 1st of each month at 08:00 (with sequential invoice numbers in the format INV-YYYYMM-NNN continuing from the last number used that month), send licence and compliance expiry alerts daily at 09:00, and send re-engagement emails to dormant contacts every Monday at 10:00. The Re-Engagement Mailer SHALL skip clients whose `Status` column contains any of: churned, inactive, cancelled, lost, or do not contact.  
 **Rationale:** Proactive outbound communications (birthdays, retainer invoices, licence alerts) prevent revenue loss and relationship degradation that would otherwise require human memory and manual effort.
 
 ---
@@ -287,8 +287,8 @@ Requirements are identified by a hierarchical identifier of the form `<TYPE>-<SE
 
 **Title:** GAOS Learn weekly intelligence cycle  
 **Priority:** Should  
-**Description:** The system SHALL execute a weekly learning cycle every Monday at 07:00 that reads historical data from Invoice_Log, Lead_Log, Completed_Jobs, FAQ_Knowledge_Base, and Appointments, extracts statistical patterns (average invoice value, lead conversion rate, no-show rate, busiest day, top vendors, late payers), and writes the results as key-value rows to the GAOS_Memory Sheets tab. Subsequent AI calls in other modules SHOULD incorporate the current GAOS_Memory context in their prompts.  
-**Rationale:** Business-context injection makes AI outputs progressively more accurate and personalised. Without an adaptive memory mechanism, all AI prompts treat every business identically.
+**Description:** The system SHALL execute a weekly learning cycle every Monday at 07:00 that reads historical data from Invoice_Log, Lead_Log, Completed_Jobs, FAQ_Knowledge_Base, and Appointments, extracts statistical patterns (average invoice value, lead conversion rate, no-show rate, busiest day, top vendors, late payers, chase rate, appointment peak time), and writes the results as key-value rows to the GAOS_Memory Sheets tab. If more than 40% of invoices have a non-blank Chase Sent value, the system SHALL write a `chase_rate` advisory to GAOS_Memory. The busiest appointment time slot (morning, lunchtime, afternoon, evening) SHALL be written to GAOS_Memory as `appointment_peak_time`. Client Pulse SHALL cross-reference at-risk clients against unpaid invoices and, where a client appears in both, write a `danger_signals` alert to GAOS_Memory. The AI Chief of Staff SHALL inject the full GAOS_Memory context into all three AI prompt calls (daily briefing, weekly summary, on-demand queries). Subsequent AI calls in other modules SHOULD incorporate the current GAOS_Memory context in their prompts.  
+**Rationale:** Business-context injection makes AI outputs progressively more accurate and personalised. Danger-signal cross-referencing gives the Chief of Staff early-warning intelligence that no single module can produce alone.
 
 ---
 
@@ -305,8 +305,8 @@ Requirements are identified by a hierarchical identifier of the form `<TYPE>-<SE
 
 **Title:** Marketer zone processing  
 **Priority:** Must  
-**Description:** The system SHALL send newsletter campaigns to the Newsletter_Queue mailing list on the first Monday of each month at 09:00, monitor Google review sources each poll cycle and log new reviews, and produce a campaign performance digest every Friday at 17:00. Modules SHALL consume the Social_Queue tab for scheduled social post management.  
-**Rationale:** Marketing automation is a primary deliverable of the Virtual Marketer role. Consistent newsletter delivery and review monitoring are commercially high-value for small businesses.
+**Description:** The system SHALL send newsletter campaigns to the Newsletter_Queue mailing list on the first Monday of each month at 09:00, monitor Google review notification emails each poll cycle, log new reviews to Reviews_Log, AI-draft responses, and produce a campaign performance digest every Friday at 17:00. Modules SHALL consume the Social_Queue tab for scheduled social post management. For negative reviews (1–3 stars), the system SHALL alert the owner via SMS, email, and Slack (if configured). For positive reviews, the system SHALL email the AI-drafted response for the owner to post.  
+**Rationale:** Marketing automation is a primary deliverable of the Virtual Marketer role. Multi-channel alerts for negative reviews ensure the owner can respond before the business reputation is damaged.
 
 ---
 
@@ -624,7 +624,7 @@ The following criteria SHALL be satisfied for the system to be considered compli
 
 **AC-007** (→ NFR-RE-005): Sending two identical lead emails SHALL result in only one processed lead entry. The second email, once the first has been labelled, SHALL be excluded from Module 03's urgent alert scan.
 
-**AC-008** (→ SFR-008): A row in Invoice_Log with an Invoice Date 15 days in the past and Status not in (paid, cancelled, void) and Chase Sent blank SHALL result in a chase email being sent and the Chase Sent cell updated to "Sent" within one poll cycle.
+**AC-008** (→ SFR-008): A row in Invoice_Log with an Invoice Date 15 days in the past and Status not in (paid, cancelled, void) and Chase Sent blank SHALL result in a chase email being sent and the Chase Sent cell updated to `"Sent-1"` within one poll cycle. A row where Chase Sent is `"Sent-1"` and Invoice Date is 21+ days past SHALL be escalated to a firmer email and Chase Sent updated to `"Sent-2"`. A row where Chase Sent is `"Sent-2"` and Invoice Date is 30+ days past SHALL receive a final notice and Chase Sent updated to `"Sent-3"`. A row where Chase Sent is `"Sent-3"` SHALL NOT receive any further chases.
 
 ### 8.3 Scheduling
 
@@ -664,5 +664,5 @@ The following criteria SHALL be satisfied for the system to be considered compli
 
 ---
 
-*End of GAOS™ High-Level System Requirements — v3.2*  
-*Document ID: GAOS-HLSR-3.2 | Aether Frameworks Ltd*
+*End of GAOS™ High-Level System Requirements — v3.3*  
+*Document ID: GAOS-HLSR-3.3 | Aether Frameworks Ltd*

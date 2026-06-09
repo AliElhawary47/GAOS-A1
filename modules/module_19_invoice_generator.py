@@ -22,9 +22,9 @@ SEND_HOUR = 8
 LAST_INVOICED_COL = 7
 
 
-def generate_invoice_text(client_name, service, fee, currency, invoice_date, business_name):
+def generate_invoice_text(client_name, service, fee, currency, invoice_date, business_name, seq=1):
     month_str = invoice_date.strftime("%B %Y")
-    inv_num   = invoice_date.strftime("INV-%Y%m")
+    inv_num   = f"INV-{invoice_date.strftime('%Y%m')}-{seq:03d}"
     return (
         f"INVOICE\n"
         f"{'─'*40}\n"
@@ -43,11 +43,20 @@ def generate_invoice_text(client_name, service, fee, currency, invoice_date, bus
 
 
 def run_monthly_invoicing(gmail, cfg):
-    sheet_id = cfg["google_sheets"]["sheet_id"]
-    tab      = cfg["google_sheets"]["tabs"].get("retainer_clients", "Retainer_Clients")
-    rows     = core.sheets_read_all(sheet_id, tab)
-    today    = datetime.now()
-    sent     = 0
+    sheet_id  = cfg["google_sheets"]["sheet_id"]
+    tab       = cfg["google_sheets"]["tabs"].get("retainer_clients", "Retainer_Clients")
+    inv_tab   = cfg["google_sheets"]["tabs"].get("invoices", "Invoice_Log")
+    rows      = core.sheets_read_all(sheet_id, tab)
+    today     = datetime.now()
+    sent      = 0
+
+    # Base the sequence on invoices already in the log for this month
+    month_pfx = today.strftime("%Y-%m")
+    try:
+        inv_rows = core.sheets_read_all(sheet_id, inv_tab)
+        seq = sum(1 for r in inv_rows if str(r.get("InvoiceDate","")).startswith(month_pfx))
+    except Exception:
+        seq = 0
 
     for i, row in enumerate(rows):
         active  = str(row.get("Active", "yes")).strip().lower()
@@ -60,8 +69,9 @@ def run_monthly_invoicing(gmail, cfg):
         if active not in ("yes","true","1","y") or not email:
             continue
 
+        seq += 1
         invoice_text = generate_invoice_text(
-            client, service, fee, currency, today, cfg["business"]["name"]
+            client, service, fee, currency, today, cfg["business"]["name"], seq
         )
 
         core.gmail_send(

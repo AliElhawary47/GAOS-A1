@@ -272,6 +272,30 @@ def run_pulse_check(gmail, cfg):
                               f"Clients currently at churn risk: {at_risk_names}. "
                               f"Prioritise personal outreach before automated messages.")
             log.info("At-risk clients written to GAOS memory.")
+
+            # Cross-signal: flag clients who are BOTH cooling AND have an unpaid invoice
+            try:
+                inv_tab  = cfg["google_sheets"]["tabs"].get("invoices", "Invoice_Log")
+                inv_rows = core.sheets_read_all(cfg["google_sheets"]["sheet_id"], inv_tab)
+                danger   = []
+                for r in at_risk:
+                    name_lower = r["name"].lower()
+                    for inv in inv_rows:
+                        vendor = str(inv.get("Vendor", inv.get("VendorName",
+                                     inv.get("Client", "")))).strip().lower()
+                        status = str(inv.get("Status", "")).strip().lower()
+                        if name_lower in vendor and status not in ("paid", "cancelled", "void"):
+                            danger.append(r["name"])
+                            break
+                if danger:
+                    learn.save_memory(cfg, "danger_signals",
+                                      f"Double risk: {', '.join(danger)} — "
+                                      f"relationship cooling AND unpaid invoice. "
+                                      f"Immediate personal contact recommended.")
+                    log.info(f"Danger signals written for: {', '.join(danger)}")
+            except Exception as e:
+                log.error(f"Danger signal cross-reference failed: {e}")
+
         except Exception as e:
             log.error(f"Could not write to GAOS memory: {e}")
 
