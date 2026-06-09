@@ -17,9 +17,12 @@ It looks for trigger emails (e.g. Stripe receipts, signed
 contracts) and posts a formatted summary to #company-updates.
 """
 
+import re
 import gaos_core as core
 
 log = core.get_logger("team_broadcaster")
+
+_AMOUNT_RE = re.compile(r'[£$€]\s*[\d,]+(?:\.\d{2})?')
 
 
 # Define the events GAOS watches for and how to label them in Slack.
@@ -79,7 +82,15 @@ def process_events(gmail, cfg):
             body_text = core.gmail_get_body_text(msg)
 
             summary = summarise_for_slack(cfg, trigger["title"], body_text)
-            message = f"{trigger['emoji']} *{trigger['title']}*\n{summary}\n_{core.timestamp()}_"
+
+            # For payment events, surface the amount directly in the Slack message
+            amount_str = ""
+            if trigger["name"] == "payment":
+                match = _AMOUNT_RE.search(body_text)
+                if match:
+                    amount_str = f" — *{match.group(0).replace(' ','')}*"
+
+            message = f"{trigger['emoji']} *{trigger['title']}*{amount_str}\n{summary}\n_{core.timestamp()}_"
 
             if "YOUR_" in webhook:
                 log.warning(f"Slack not configured — would post: {message}")

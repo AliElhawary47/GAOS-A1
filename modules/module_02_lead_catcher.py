@@ -30,6 +30,9 @@ A potential customer has submitted this enquiry:
 Return ONLY valid JSON with these exact keys:
   LeadName        — the enquirer's name, or "there" if not found
   LeadEnquiry     — a one-line summary of what they want
+  LeadScore       — classify as "Hot" (urgent, time-sensitive, or high-value signal),
+                    "Warm" (genuine interest, no urgency), or "Cold" (vague, generic,
+                    or low-signal)
   SuggestedReply  — a warm, professional 3-4 sentence reply that thanks
                     them, confirms we received their enquiry, and says we
                     will be in touch within a few hours. Sign off as
@@ -66,25 +69,27 @@ def process_lead(gmail, cfg, message_id):
     lead_name = core.safe_text(data.get("LeadName"), "there")
     enquiry   = core.safe_text(data.get("LeadEnquiry"), "General enquiry")
     reply     = core.safe_text(data.get("SuggestedReply"), "Thank you for your enquiry.")
+    score     = core.safe_text(data.get("LeadScore"), "Warm")
 
     # Save the AI reply as a Gmail draft (owner reviews & sends)
     core.gmail_create_draft(gmail, sender, cfg["gmail"]["watch_inbox"],
                             f"Re: Your enquiry to {business}", reply)
-    log.info("Reply draft saved to Gmail.")
+    log.info(f"Reply draft saved to Gmail. Lead score: {score}")
 
-    # Log lead to Sheets
+    # Log lead to Sheets (score stored in Status column for CoS hot-lead detection)
     core.sheets_append_row(
         cfg["google_sheets"]["sheet_id"],
         cfg["google_sheets"]["tabs"]["leads"],
-        [lead_name, sender, enquiry, "Draft Ready", core.timestamp()]
+        [lead_name, sender, enquiry, score, core.timestamp()]
     )
 
-    # Ping the owner on WhatsApp
+    # Ping the owner on WhatsApp — flag Hot leads prominently
     tw = cfg["twilio"]
     if "YOUR_" not in tw["account_sid"]:
+        prefix = "🔥 HOT LEAD" if score == "Hot" else "New lead"
         core.send_whatsapp(
             tw["account_sid"], tw["auth_token"], tw["from_number"], tw["owner_mobile"],
-            f"New lead: {lead_name} — {enquiry}. A reply draft is ready in your inbox."
+            f"{prefix}: {lead_name} — {enquiry}. A reply draft is ready in your inbox."
         )
         log.info("WhatsApp alert sent to owner.")
 

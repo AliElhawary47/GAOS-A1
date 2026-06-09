@@ -37,6 +37,7 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from typing import List, Optional
 import gaos_core as core
+from modules import module_25_gaos_learn as learn
 
 log = core.get_logger("chief_of_staff")
 
@@ -292,22 +293,32 @@ def gather_intelligence(cfg) -> List[IntelItem]:
     try:
         sheet_id = cfg["google_sheets"]["sheet_id"]
 
-        # At-risk clients from GAOS memory
+        # At-risk clients and danger signals from GAOS memory
         try:
             mem_rows = core.sheets_read_all(sheet_id, "GAOS_Memory")
-            for row in mem_rows:
-                if str(row.get("Key","")) == "at_risk_clients":
-                    clients = str(row.get("Value","")).strip()
-                    if clients:
-                        items.append(IntelItem(
-                            category="watch",
-                            role="intelligence",
-                            headline=f"Client Pulse: relationship cooling detected",
-                            detail=f"Clients flagged by Client Pulse: {clients}",
-                            score=55,
-                            action="Review the Monday Client Pulse report and reach out personally."
-                        ))
-                    break
+            mem      = {str(r.get("Key","")): str(r.get("Value","")).strip() for r in mem_rows}
+
+            danger = mem.get("danger_signals", "")
+            if danger:
+                items.append(IntelItem(
+                    category="urgent",
+                    role="intelligence",
+                    headline="Double risk: cooling client with unpaid invoice",
+                    detail=danger,
+                    score=85,
+                    action="Call them personally today — do not chase via automated email."
+                ))
+
+            at_risk = mem.get("at_risk_clients", "")
+            if at_risk and not danger:
+                items.append(IntelItem(
+                    category="watch",
+                    role="intelligence",
+                    headline="Client Pulse: relationship cooling detected",
+                    detail=f"Clients flagged by Client Pulse: {at_risk}",
+                    score=55,
+                    action="Review the Monday Client Pulse report and reach out personally."
+                ))
         except Exception:
             pass
 
@@ -478,6 +489,7 @@ def build_briefing(items, cfg) -> str:
     if not prompt:
         return f"Good morning, {owner}. All systems running normally. No items requiring your attention today."
 
+    prompt = learn.inject(cfg, prompt)
     briefing = core.ask_deepseek(
         cfg["deepseek"]["api_key"],
         prompt,
@@ -517,6 +529,7 @@ def handle_if_cos_query(gmail, cfg, message_text: str, sender_number: str) -> bo
     try:
         items    = gather_all_intelligence(cfg)
         prompt   = build_query_response_prompt(message_text, items, cfg)
+        prompt   = learn.inject(cfg, prompt)
         response = core.ask_deepseek(
             cfg["deepseek"]["api_key"], prompt,
             max_tokens=150, expect_json=False
@@ -607,6 +620,7 @@ def run_weekly_summary(gmail, cfg):
         f"Be direct. Use names and numbers. Under 200 words. "
         f"Return ONLY the summary text."
     )
+    prompt = learn.inject(cfg, prompt)
 
     summary = core.ask_deepseek(
         cfg["deepseek"]["api_key"], prompt,
