@@ -89,6 +89,14 @@ def generate_digest(gmail, cfg):
         f"GAOS Daily Digest — {yesterday}",
         body
     )
+
+    # Also post a condensed version to Slack if webhook is configured
+    slack_url = cfg.get("slack", {}).get("webhook_url", "")
+    if slack_url and "YOUR_" not in slack_url:
+        slack_body = "\n".join(body.splitlines()[:12])
+        core.post_to_slack(slack_url, f"*GAOS Daily Digest — {yesterday}*\n{slack_body}")
+        log.info("Daily digest also posted to Slack.")
+
     log.info("Daily digest sent.")
 
 

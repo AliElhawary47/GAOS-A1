@@ -199,6 +199,23 @@ def learn_faqs(cfg):
     log.info(f"FAQ memory updated ({count} entries)")
 
 
+def learn_chase_rate(cfg):
+    """Learns what percentage of invoices required a payment chase."""
+    tab  = cfg["google_sheets"]["tabs"].get("invoices", "Invoice_Log")
+    rows = core.sheets_read_all(cfg["google_sheets"]["sheet_id"], tab)
+    if len(rows) < 5:
+        return
+
+    chased = sum(1 for r in rows
+                 if str(r.get("Chase Sent", "")).strip().lower() not in ("", "no"))
+    rate   = round(chased / len(rows) * 100)
+    note   = ("Above average — consider shorter payment terms or upfront deposits."
+              if rate > 40 else "Within normal range.")
+    save_memory(cfg, "chase_rate",
+                f"Payment chase rate: {rate}% of invoices required a reminder. {note}")
+    log.info(f"Chase rate memory updated ({rate}% of {len(rows)} invoices chased)")
+
+
 def learn_appointments(cfg):
     """Learns no-show rate and appointment volume patterns."""
     tab  = cfg["google_sheets"]["tabs"].get("appointments", "Appointments")
@@ -214,6 +231,31 @@ def learn_appointments(cfg):
         save_memory(cfg, "noshow_rate",
                     f"No-show rate: {ns_rate}% ({noshows} of {total} appointments). "
                     f"{'High — consider requiring deposits.' if ns_rate > 15 else 'Within normal range.'}")
+
+    # Peak booking time slot
+    from collections import Counter
+    slot_counts: Counter = Counter()
+    for r in rows:
+        t = str(r.get("Time", "")).strip()[:5]
+        if t and ":" in t:
+            try:
+                h = int(t.split(":")[0])
+                if h < 12:
+                    slot = "morning (before noon)"
+                elif h < 14:
+                    slot = "lunchtime (12–2 pm)"
+                elif h < 17:
+                    slot = "afternoon (2–5 pm)"
+                else:
+                    slot = "evening (after 5 pm)"
+                slot_counts[slot] += 1
+            except Exception:
+                pass
+
+    if slot_counts:
+        peak = slot_counts.most_common(1)[0][0]
+        save_memory(cfg, "appointment_peak_time",
+                    f"Most bookings are in the {peak}. Ensure diary capacity matches demand.")
 
     log.info(f"Appointment memory updated ({total} appointments, {ns_rate}% no-show rate)")
 
@@ -266,6 +308,7 @@ def run_learning_cycle(cfg):
     learn_revenue(cfg)
     learn_faqs(cfg)
     learn_appointments(cfg)
+    learn_chase_rate(cfg)
 
     save_memory(cfg, "last_updated",
                 f"GAOS memory last updated: {datetime.now().strftime('%A %d %B %Y at %H:%M')}")
