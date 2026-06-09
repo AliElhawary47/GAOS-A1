@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAOS™ Low-Level System Requirements — v3.3</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', 'Helvetica Neue', sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 60px; box-shadow: 0 0 20px rgba(0,0,0,0.1); line-height: 1.8; }
+        .header { border-bottom: 4px solid #2c3e50; padding-bottom: 30px; margin-bottom: 40px; }
+        .header h1 { font-size: 2.5em; color: #2c3e50; margin-bottom: 10px; font-weight: 700; }
+        .metadata { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; font-size: 0.95em; color: #666; }
+        .metadata-item { padding: 8px 0; }
+        .metadata-label { font-weight: 600; color: #2c3e50; }
+        .toc { background: #ecf0f1; padding: 25px; border-radius: 5px; margin-bottom: 40px; border-left: 4px solid #3498db; }
+        .toc h2 { color: #2c3e50; margin-bottom: 15px; font-size: 1.3em; }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin-bottom: 8px; }
+        .toc a { color: #3498db; text-decoration: none; font-weight: 500; }
+        .toc a:hover { text-decoration: underline; }
+        h2 { color: #2c3e50; font-size: 1.8em; margin-top: 40px; margin-bottom: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
+        h3 { color: #34495e; font-size: 1.4em; margin-top: 30px; margin-bottom: 15px; }
+        h4 { color: #34495e; font-size: 1.1em; margin-top: 20px; margin-bottom: 10px; font-weight: 600; }
+        p { margin-bottom: 15px; text-align: justify; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background: #2c3e50; color: white; padding: 12px; text-align: left; font-weight: 600; }
+        td { border: 1px solid #ddd; padding: 10px 12px; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        tr:hover { background: #f0f0f0; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.95em; color: #c7254e; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 5px; overflow-x: auto; margin: 20px 0; font-family: 'Courier New', monospace; font-size: 0.9em; }
+        pre code { background: none; color: inherit; padding: 0; }
+        ul, ol { margin-left: 20px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        blockquote { border-left: 4px solid #3498db; padding-left: 15px; margin-left: 0; margin-bottom: 15px; color: #555; font-style: italic; }
+        .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #999; font-size: 0.9em; }
+        @media print { body { padding: 0; background: white; } .container { box-shadow: none; max-width: 100%; } }
+        @page { margin: 2cm; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>GAOS™ Low-Level System Requirements — v3.3</h1>
+            <div class="metadata">
+                <div class="metadata-item"><span class="metadata-label">Document ID:</span> GAOS-LLSR-3.3</div>
+                <div class="metadata-item"><span class="metadata-label">Product:</span> Ghost Assistant Operating System (GAOS™)</div>
+                <div class="metadata-item"><span class="metadata-label">Vendor:</span> Aether Frameworks Ltd</div>
+                <div class="metadata-item"><span class="metadata-label">Status:</span> Released</div>
+                <div class="metadata-item"><span class="metadata-label">Date:</span> 2026-06-09</div>
+                <div class="metadata-item"><span class="metadata-label">Revision:</span> 2.0</div>
+            </div>
+        </div>
+        <div class="content">
+<p><strong>Document ID:</strong> GAOS-LLSR-3.3</p>
+<p><strong>Product:</strong> Ghost Assistant Operating System (GAOS™)</p>
+<p><strong>Vendor:</strong> Aether Frameworks Ltd</p>
+<p><strong>Status:</strong> Released</p>
+<p><strong>Date:</strong> 2026-06-09</p>
+<p><strong>Revision:</strong> 2.0</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>Table of Contents</h2>
+<p>1. <a href="#1-purpose-and-scope">Purpose and Scope</a></p>
+<p>2. <a href="#2-component-requirements">Component Requirements</a></p>
+<p>3. <a href="#3-module-level-requirements">Module-Level Requirements</a></p>
+<p>4. <a href="#4-interface-requirements">Interface Requirements</a></p>
+<p>5. <a href="#5-data-requirements">Data Requirements</a></p>
+<p>6. <a href="#6-configuration-requirements">Configuration Requirements</a></p>
+<p>7. <a href="#7-error-handling-requirements">Error Handling Requirements</a></p>
+<p>8. <a href="#8-security-requirements">Security Requirements</a></p>
+<p>9. <a href="#9-deployment-requirements">Deployment Requirements</a></p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>1. Purpose and Scope</h2>
+<h3>1.1 Purpose</h3>
+<p>This document defines the Low-Level System Requirements (LLSR) for the Ghost Assistant Operating System (GAOS™) version 3.3. It provides precise, implementer-facing specifications for every software component, all 34 functional modules, all external API interfaces, all data schemas, the complete configuration schema, error handling behaviour, security controls, and deployment requirements.</p>
+<p>This document is the companion to the High-Level System Requirements document (GAOS-HLSR-3.3). Where the HLSR defines <em>what</em> the system must do, this document defines <em>how</em> each component must behave. A developer SHALL be able to implement, verify, or audit any aspect of the system using only this document and the referenced public API specifications.</p>
+<h3>1.2 Scope</h3>
+<p>This document covers:</p>
+<ul style="margin-left: 0px;"><li>All five core Python source files: <code>gaos_core.py</code>, <code>gaos_ai.py</code>, <code>gaos_launcher.py</code>, <code>gaos_server.py</code>, <code>gaos_install.py</code></li></ul>
+<ul style="margin-left: 0px;"><li>All 34 module files in the <code>modules/</code> directory</li></ul>
+<ul style="margin-left: 0px;"><li>All external API integrations</li></ul>
+<ul style="margin-left: 0px;"><li>All Google Sheets tab schemas</li></ul>
+<ul style="margin-left: 0px;"><li>The complete <code>config.json</code> schema</li></ul>
+<ul style="margin-left: 0px;"><li>Error handling and circuit breaker specifications</li></ul>
+<ul style="margin-left: 0px;"><li>Security controls at the implementation level</li></ul>
+<ul style="margin-left: 0px;"><li>Deployment configurations for Railway.app and Linux systemd</li></ul>
+<h3>1.3 Requirement Identifier Convention</h3>
+<p>All requirements in this document follow the pattern <code>&lt;TYPE&gt;-&lt;COMPONENT&gt;-&lt;SEQ&gt;</code>:</p>
+<ul style="margin-left: 0px;"><li><code>COMP-CORE-NNN</code> — gaos_core.py requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>COMP-AI-NNN</code> — gaos_ai.py requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>COMP-LAUN-NNN</code> — gaos_launcher.py requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>COMP-SRV-NNN</code> — gaos_server.py requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>COMP-INST-NNN</code> — gaos_install.py requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>MOD-NN-NNN</code> — module-level requirements (NN = two-digit module number)</li></ul>
+<ul style="margin-left: 0px;"><li><code>IFACE-NNN</code> — interface requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>DATA-NNN</code> — data schema requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>CFG-NNN</code> — configuration requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>ERR-NNN</code> — error handling requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>SEC-NNN</code> — security requirements</li></ul>
+<ul style="margin-left: 0px;"><li><code>DEPLOY-NNN</code> — deployment requirements</li></ul>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>2. Component Requirements</h2>
+<h3>2.1 gaos_core.py — Shared Runtime Library</h3>
+<p><code>gaos_core.py</code> is the single shared runtime library imported by all modules and by <code>gaos_server.py</code>. It SHALL expose the complete set of utility functions described below and SHALL have no module-level side effects other than configuring the root <code>gaos</code> logger.</p>
+<h4>2.1.1 Configuration Loading</h4>
+<p><strong>COMP-CORE-001</strong> — The function <code>load_config(path="config.json")</code> SHALL open and JSON-parse the file at the given path. On any exception (FileNotFoundError, JSONDecodeError, PermissionError) it SHALL log an ERROR and return an empty dict <code>{}</code>. It SHALL NOT raise exceptions to callers.</p>
+<p><strong>COMP-CORE-002</strong> — The function <code>get_secret(key_path: str, default=None)</code> SHALL: (1) convert the dot-separated key_path to SCREAMING_SNAKE_CASE and attempt to read from <code>os.environ</code>; (2) if not found in environment, call <code>load_config()</code> and traverse the dict using each dot-separated segment as a key; (3) return <code>default</code> if any key is missing or traversal fails. Environment variable values SHALL take precedence over <code>config.json</code> values.</p>
+<h4>2.1.2 Logging</h4>
+<p><strong>COMP-CORE-003</strong> — The function <code>get_logger(name: str)</code> SHALL return a <code>logging.Logger</code> instance named <code>gaos.&lt;name&gt;</code>. If the logger has no handlers, it SHALL attach a <code>StreamHandler</code> with the format <code>%(asctime)s  %(name)s  %(levelname)s  %(message)s</code>. The logger SHALL have <code>propagate = False</code> to prevent duplicate log entries via the root logger.</p>
+<h4>2.1.3 Gmail Connectivity</h4>
+<p><strong>COMP-CORE-004</strong> — The function <code>connect_gmail()</code> SHALL: (1) attempt to load credentials from <code>token.json</code> using <code>google.oauth2.credentials.Credentials.from_authorized_user_file</code> with scopes <code>gmail.modify</code> and <code>gmail.compose</code>; (2) if no valid credentials exist, attempt to refresh using the stored refresh token; (3) if refresh fails or no token file exists, initiate the <code>InstalledAppFlow.run_local_server(port=0)</code> browser flow using <code>credentials.json</code>; (4) write the resulting credentials to <code>token.json</code>; (5) build and return a Gmail API service object using <code>googleapiclient.discovery.build("gmail", "v1")</code>. On any exception it SHALL log an ERROR and return <code>None</code>.</p>
+<p><strong>COMP-CORE-005</strong> — The function <code>gmail_search(gmail, query: str, max_results: int = 25)</code> SHALL call <code>gmail.users().messages().list(userId="me", q=query, maxResults=max_results)</code> and return the <code>messages</code> list from the response. On exception it SHALL log an ERROR and return <code>[]</code>.</p>
+<p><strong>COMP-CORE-006</strong> — The function <code>gmail_get_message(gmail, message_id: str)</code> SHALL retrieve the full message with <code>format="full"</code>, construct a <code>headers_dict</code> from the <code>payload.headers</code> list, extract body text via <code>gmail_get_body_text</code>, and return <code>(headers_dict, body_text)</code>. On exception it SHALL return <code>({}, "")</code>.</p>
+<p><strong>COMP-CORE-007</strong> — The function <code>gmail_get_body_text(msg: dict)</code> SHALL recursively traverse the message payload, return the decoded content of the first <code>text/plain</code> part found, decoding with <code>utf-8</code> and <code>errors="replace"</code>. If no plain-text part is found it SHALL return <code>""</code>.</p>
+<p><strong>COMP-CORE-008</strong> — The function <code>gmail_download_pdf(gmail, message_id: str)</code> SHALL retrieve the full message, iterate all message parts recursively, identify any part with <code>mimeType == "application/pdf"</code> or a filename ending <code>.pdf</code>, download the attachment bytes (via <code>messages.attachments().get</code> if an <code>attachmentId</code> is present, or from inline body data otherwise), and return <code>(pdf_bytes, filename)</code>. If no PDF is found it SHALL return <code>(None, None)</code>. On exception it SHALL log an ERROR and return <code>(None, None)</code>.</p>
+<p><strong>COMP-CORE-009</strong> — The function <code>gmail_create_draft(gmail, to: str, subject: str, body: str)</code> SHALL: retrieve the sender's email address via <code>gmail.users().getProfile(userId="me")</code>; construct a <code>MIMEText</code> message; base64url-encode it; call <code>gmail.users().drafts().create</code>. On exception it SHALL log an ERROR.</p>
+<p><strong>COMP-CORE-010</strong> — The function <code>gmail_send(gmail, to, from_addr, subject, body)</code> SHALL construct a <code>MIMEText</code> message, base64url-encode it, and call <code>gmail.users().messages().send(userId="me")</code>. On exception it SHALL log an ERROR.</p>
+<p><strong>COMP-CORE-011</strong> — The function <code>gmail_mark_read(gmail, message_id: str)</code> SHALL call <code>gmail.users().messages().modify</code> with <code>removeLabelIds: ["UNREAD"]</code>. On exception it SHALL log an ERROR.</p>
+<p><strong>COMP-CORE-012</strong> — The function <code>gmail_label(gmail, message_id: str, label_name: str)</code> SHALL: (1) list all labels via <code>gmail.users().labels().list</code>; (2) look up the label ID by case-insensitive name match; (3) if not found, create the label via <code>gmail.users().labels().create</code>; (4) apply the label via <code>gmail.users().messages().modify</code> with <code>addLabelIds</code>. On exception it SHALL log an ERROR.</p>
+<h4>2.1.4 Google Sheets Access</h4>
+<p><strong>COMP-CORE-013</strong> — The internal function <code>_get_sheets_client()</code> SHALL: (1) return the cached <code>_sheets_client</code> if already initialised; (2) if <code>service_account.json</code> exists, authenticate via <code>google.oauth2.service_account.Credentials.from_service_account_file</code> with scopes <code>spreadsheets</code> and <code>drive</code>, then call <code>gspread.authorize</code>; (3) if <code>service_account.json</code> does not exist but <code>token.json</code> exists, authenticate via <code>google.oauth2.credentials.Credentials.from_authorized_user_file</code>, refresh if expired, then call <code>gspread.authorize</code>; (4) if neither file exists, log an ERROR and return <code>None</code>. The result SHALL be cached in the module-level <code>_sheets_client</code> variable.</p>
+<p><strong>COMP-CORE-014</strong> — The function <code>sheets_read_all(sheet_id, tab_name)</code> SHALL call <code>gspread.Spreadsheet.worksheet(tab_name).get_all_records(default_blank="")</code> and return the result as a list of dicts. On exception it SHALL log an ERROR and return <code>[]</code>.</p>
+<p><strong>COMP-CORE-015</strong> — The function <code>sheets_append_row(sheet_id, tab_name, row_values: list)</code> SHALL call <code>worksheet.append_row(row_values, value_input_option="USER_ENTERED")</code>. On exception it SHALL log an ERROR.</p>
+<p><strong>COMP-CORE-016</strong> — The function <code>sheets_update_cell(sheet_id, tab_name, row_index: int, col, value: str)</code> SHALL: if <code>col</code> is a string, resolve it to a 1-based column index by reading <code>ws.row_values(1)</code> and finding the matching header; then call <code>ws.update_cell(row_index, col_idx, value)</code>. On exception it SHALL log an ERROR.</p>
+<p><strong>COMP-CORE-017</strong> — The function <code>sheets_find_or_create_tab(sheet_id, tab_name, headers=None)</code> SHALL: list all worksheets in the spreadsheet; if <code>tab_name</code> is not present, create it with <code>add_worksheet(title=tab_name, rows=200, cols=20)</code> and optionally append the <code>headers</code> row. It SHALL do nothing if the tab already exists. On exception it SHALL log a WARNING.</p>
+<h4>2.1.5 AI Interface</h4>
+<p><strong>COMP-CORE-018</strong> — The function <code>ask_deepseek(api_key, prompt, max_tokens=500, expect_json=True, system=None)</code> SHALL attempt to import <code>gaos_ai</code> and delegate to <code>gaos_ai.ask_ai(prompt, api_key=api_key, max_tokens=max_tokens, expect_json=expect_json, system=system)</code>. If <code>gaos_ai</code> is not importable (ImportError), it SHALL fall back to a direct DeepSeek API call with 3-attempt retry logic (exponential backoff: 1s, 2s) and the same return semantics.</p>
+<p><strong>COMP-CORE-019</strong> — The function <code>chat_deepseek(api_key, messages, system_prompt=None, max_tokens=500)</code> SHALL delegate to <code>gaos_ai.chat_ai</code> if available, or fall back to a direct DeepSeek chat API call.</p>
+<h4>2.1.6 Communication Helpers</h4>
+<p><strong>COMP-CORE-020</strong> — The function <code>send_sms(account_sid, auth_token, from_number, to_number, body)</code> SHALL POST to <code>https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json</code> with Basic Auth (<code>account_sid:auth_token</code>), form data <code>{From, To, Body}</code>, and a timeout of 30 seconds. On exception it SHALL log an ERROR.</p>
+<p><strong>COMP-CORE-021</strong> — The function <code>send_whatsapp(account_sid, auth_token, from_number, to_number, body)</code> SHALL prepend <code>whatsapp:</code> to both <code>from_number</code> and <code>to_number</code> if not already present, truncate <code>body</code> to 1,600 characters, and POST to the same Twilio Messages endpoint as <code>send_sms</code>. On exception it SHALL log an ERROR.</p>
+<p><strong>COMP-CORE-022</strong> — The function <code>post_to_slack(webhook_url, message)</code> SHALL POST <code>{"text": message}</code> as JSON to <code>webhook_url</code> with a timeout of 15 seconds. On exception it SHALL log an ERROR.</p>
+<h4>2.1.7 PDF Extraction</h4>
+<p><strong>COMP-CORE-023</strong> — The function <code>extract_pdf_text(pdf_bytes: bytes)</code> SHALL import <code>pdfplumber</code> lazily, open the PDF from a <code>BytesIO</code> buffer, extract text from each page, join pages with <code>\n</code>, and return the combined text. On exception it SHALL log an ERROR and return <code>""</code>.</p>
+<h4>2.1.8 Utility Functions</h4>
+<p><strong>COMP-CORE-024</strong> — The function <code>archive_file(archive_folder, content: bytes, filename: str)</code> SHALL create the directory (and parents) if it does not exist, and write <code>content</code> to <code>&lt;archive_folder&gt;/&lt;filename&gt;</code>. If the target path already exists, it SHALL append a numeric suffix (<code>_1</code>, <code>_2</code>, etc.) until a unique path is found. On exception it SHALL log an ERROR.</p>
+<p><strong>COMP-CORE-025</strong> — The function <code>safe_text(value, default="")</code> SHALL convert <code>value</code> to a stripped string. If <code>value</code> is <code>None</code>, empty string, or whitespace-only, it SHALL return <code>default</code>. It SHALL never raise.</p>
+<p><strong>COMP-CORE-026</strong> — The function <code>timestamp()</code> SHALL return the current local datetime as a string in the format <code>"%Y-%m-%d %H:%M:%S"</code>.</p>
+<p><strong>COMP-CORE-027</strong> — The function <code>twiml_gather(prompt_text, action_url)</code> SHALL return a valid TwiML XML string containing a <code>&lt;Response&gt;&lt;Gather input="speech" speechTimeout="auto" language="en-GB" action="{action_url}"&gt;&lt;Say voice="Polly.Amy"&gt;{prompt_text}&lt;/Say&gt;&lt;/Gather&gt;&lt;/Response&gt;</code>. It SHALL XML-escape <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code> in both <code>prompt_text</code> and <code>action_url</code>.</p>
+<p><strong>COMP-CORE-028</strong> — The function <code>twiml_say_hangup(text)</code> SHALL return a TwiML XML string containing <code>&lt;Response&gt;&lt;Say voice="Polly.Amy"&gt;{text}&lt;/Say&gt;&lt;Hangup/&gt;&lt;/Response&gt;</code> with <code>text</code> XML-escaped.</p>
+<h4>2.1.9 Scheduling</h4>
+<p><strong>COMP-CORE-029</strong> — The function <code>should_run_at(hour, weekday=None, day_of_month=None, minute_start=0, minute_window=5)</code> SHALL return <code>True</code> only when ALL of the following conditions are met: <code>datetime.now().hour == hour</code>; <code>datetime.now().minute</code> is in the range <code>[minute_start, minute_start + minute_window)</code>; if <code>weekday</code> is not <code>None</code>, <code>datetime.now().weekday() == weekday</code>; if <code>day_of_month</code> is not <code>None</code>, <code>datetime.now().day == day_of_month</code>. It SHALL return <code>False</code> otherwise and SHALL never raise.</p>
+<p><strong>COMP-CORE-030</strong> — The function <code>run_loop(action_fn, poll_seconds=300)</code> SHALL execute <code>action_fn()</code> in a <code>while True</code> loop, sleeping <code>poll_seconds</code> between calls. All exceptions raised by <code>action_fn</code> SHALL be caught and logged as ERROR. The function SHALL exit cleanly on <code>KeyboardInterrupt</code>, printing <code>"\nStopped.\n"</code>.</p>
+<h4>2.1.10 Knowledge Base</h4>
+<p><strong>COMP-CORE-031</strong> — The function <code>load_chatbot_knowledge(cfg: dict)</code> SHALL read all rows from the tab specified by <code>cfg["google_sheets"]["tabs"]["chatbot"]</code> (default <code>"Chatbot_Knowledge"</code>), filter rows where both <code>Question</code> and <code>Answer</code> fields are non-empty, format each as <code>"Q: {question}\nA: {answer}"</code>, and return all pairs joined by <code>"\n\n"</code>. On exception it SHALL return <code>""</code>.</p>
+<h4>2.1.11 Audit and Usage Logging</h4>
+<p><strong>COMP-CORE-032</strong> — The function <code>log_action(cfg, module, action, status="ok", detail="")</code> SHALL append a row <code>[timestamp(), module, action, status, detail[:250]]</code> to the tab specified by <code>cfg["google_sheets"]["tabs"]["actions_log"]</code> (default <code>"Actions_Log"</code>). On exception it SHALL log a WARNING (not ERROR) to avoid recursive failure loops.</p>
+<p><strong>COMP-CORE-033</strong> — The function <code>log_usage(cfg, module, tokens: int, cost_gbp: float = 0.0)</code> SHALL append a row <code>[timestamp(), module, tokens, round(cost_gbp, 6)]</code> to the <code>Usage_Log</code> tab. On exception it SHALL log a WARNING.</p>
+<h4>2.1.12 System Stats</h4>
+<p><strong>COMP-CORE-034</strong> — The function <code>get_memory_usage_mb()</code> SHALL use <code>psutil.Process(os.getpid()).memory_info().rss / 1_048_576</code> to return current process RSS memory in MB as a float. If <code>psutil</code> is unavailable it SHALL return <code>0.0</code>.</p>
+<p><strong>COMP-CORE-035</strong> — The function <code>get_system_stats()</code> SHALL return a dict containing <code>memory_mb</code> (from <code>get_memory_usage_mb()</code>), and where <code>psutil</code> is available, <code>disk_usage_percent</code> and <code>cpu_percent</code> (with <code>interval=0.1</code>).</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>2.2 gaos_ai.py — AI Provider Manager</h3>
+<h4>2.2.1 Circuit Breaker</h4>
+<table>
+<tr>
+<th><code>"open"</code></th>
+</tr>
+</table>
+<p><strong>COMP-AI-003</strong> — The <code>_CircuitBreaker.success()</code> method SHALL reset <code>failures</code> to 0 and transition state to <code>"closed"</code>, logging an INFO if transitioning from a non-closed state.</p>
+<p><strong>COMP-AI-004</strong> — The <code>_CircuitBreaker.failure()</code> method SHALL increment <code>failures</code> by 1. When <code>failures &gt;= threshold</code>, it SHALL set state to <code>"open"</code>, record <code>opened_at = time.time()</code>, and log a WARNING identifying the provider name and failure count.</p>
+<h4>2.2.2 Provider</h4>
+<p><strong>COMP-AI-005</strong> — The <code>_Provider</code> class SHALL be initialised with <code>name</code>, <code>api_url</code>, <code>model</code>, <code>api_key</code>, <code>cost_per_1k</code>, and <code>breaker_cooldown</code>. It SHALL maintain <code>total_tokens</code>, <code>total_cost</code>, and <code>total_calls</code> counters initialised to zero.</p>
+<p><strong>COMP-AI-006</strong> — The internal <code>_Provider._post(messages, max_tokens, temperature, expect_json)</code> method SHALL: (1) return <code>None</code> immediately if <code>api_key</code> is absent or starts with <code>"YOUR_"</code>; (2) call <code>self.breaker.allow()</code> and return <code>None</code> if disallowed; (3) construct the request payload with <code>model</code>, <code>messages</code>, <code>max_tokens</code>, <code>temperature</code>; (4) if <code>expect_json</code> is <code>True</code> and provider name is <code>"deepseek"</code>, add <code>response_format: {"type": "json_object"}</code>; (5) POST with Bearer auth header and 60-second timeout; (6) on success: update <code>total_tokens</code>, <code>total_cost</code>, <code>total_calls</code>, call <code>breaker.success()</code>, return the content string; (7) on any exception: call <code>breaker.failure()</code>, log a WARNING, return <code>None</code>.</p>
+<p><strong>COMP-AI-007</strong> — The <code>_Provider.ask(prompt, max_tokens, expect_json, system)</code> method SHALL construct a messages list (optionally prepending a system message), call <code>_post</code> with <code>temperature=0.0</code>, and return <code>None</code> on failure. If <code>expect_json</code> is <code>True</code> and the raw content is not <code>None</code>, it SHALL strip markdown fences (`<code> </code>`<code>json </code><code> and </code><code> </code>`<code> </code><code>), attempt </code>json.loads<code>, and return the parsed object. On </code>json.loads<code> failure it SHALL log a WARNING with the raw content (truncated to 120 chars) and return </code>None<code>.</p>
+<p><strong>COMP-AI-008</strong> — The </code>_Provider.chat(messages, system_prompt, max_tokens)<code> method SHALL call </code>_post<code> with </code>temperature=0.4<code> and </code>expect_json=False<code>, returning the content string or </code>None<code>.</p>
+<h4>2.2.3 AI Manager</h4>
+<p><strong>COMP-AI-009</strong> — The </code>_AIManager._build()<code> method SHALL: read </code>config.json<code> (ignoring errors); resolve the DeepSeek key from </code>os.environ.get("DEEPSEEK_API_KEY")<code> or </code>cfg["deepseek"]["api_key"]<code>; resolve the Groq key from </code>os.environ.get("GROQ_API_KEY")<code> or </code>cfg["groq"]["api_key"]<code>; create a DeepSeek </code>_Provider<code> with </code>api_url="https://api.deepseek.com/v1/chat/completions"<code>, </code>model="deepseek-chat"<code>, </code>cost_per_1k=0.00014<code>, </code>breaker_cooldown=600<code> if the key is valid; create a Groq </code>_Provider<code> with </code>api_url="https://api.groq.com/openai/v1/chat/completions"<code>, </code>model="llama-3.3-70b-versatile"<code>, </code>cost_per_1k=0.0<code>, </code>breaker_cooldown=300<code> if the key is valid; append valid providers to </code>self._providers<code> in the order DeepSeek, Groq.</p>
+<p><strong>COMP-AI-010</strong> — The </code>_AIManager.ask(prompt, max_tokens, expect_json, system)<code> method SHALL iterate </code>self._providers<code> in order, call </code>p.ask(...)<code>, and return the first non-None result. If the responding provider is not </code>self._providers[0]<code>, it SHALL log a WARNING indicating failover. If all providers return </code>None<code>, it SHALL log an ERROR and return </code>{}<code> if </code>expect_json<code> else </code>""<code>.</p>
+<p><strong>COMP-AI-011</strong> — The </code>_AIManager.chat(messages, system_prompt, max_tokens)<code> method SHALL follow the same failover logic as </code>ask<code>, returning the first non-None string. On total failure it SHALL log an ERROR and return </code>""<code>.</p>
+<p><strong>COMP-AI-012</strong> — The </code>_AIManager.status()<code> method SHALL return a dict with </code>active_provider<code> (name of first provider, or </code>"none"<code>), and a </code>providers<code> list. Each provider entry SHALL include </code>name<code>, </code>calls<code>, </code>tokens<code>, </code>cost_gbp<code> (rounded to 6 decimal places), and </code>circuit_state<code>.</p>
+<p><strong>COMP-AI-013</strong> — The module-level </code>_manager<code> variable SHALL be </code>None<code> on import. </code>_get_manager()<code> SHALL initialise </code>_AIManager()<code> on first call and cache it. The </code>reset()<code> function SHALL set </code>_manager = None<code> to force re-initialisation on the next call.</p>
+<p><strong>COMP-AI-014</strong> — The public functions </code>ask_ai<code> and </code>chat_ai<code> SHALL accept an </code>api_key<code> parameter for backward compatibility with existing module code but SHALL ignore it; key resolution SHALL occur exclusively inside </code>_AIManager._build()<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>2.3 gaos_launcher.py — Module Orchestrator</h3>
+<p><strong>COMP-LAUN-001</strong> — The module SHALL define </code>MODULE_FILES<code> as a dict mapping two-digit string module IDs (e.g. </code>"01"<code>, </code>"08"<code>) to fully qualified Python module paths (e.g. </code>"modules.module_01_invoice_scanner"<code>). All 34 active modules SHALL be registered. Module IDs 09 and 11 SHALL NOT be present (merged into module 08 in v3.2).</p>
+<p><strong>COMP-LAUN-002</strong> — The module SHALL define </code>MODULE_NAMES<code> as a dict mapping the same IDs to human-readable names for display and process naming.</p>
+<p><strong>COMP-LAUN-003</strong> — The module SHALL define </code>ROLES<code> as a dict. Each role entry SHALL contain </code>name<code>, </code>tagline<code>, </code>modules<code> (list of two-digit ID strings), and </code>price<code> (int GBP). The six named roles SHALL be: </code>admin<code> (01, 05, 06, 07, 08, 27), </code>sales<code> (02, 03, 04, 08, 15), </code>finance<code> (08, 13, 14, 16, 19, 20, 36), </code>receptionist<code> (10, 12, 22, 23), </code>marketer<code> (17, 18, 21, 32, 33, 34), </code>intelligence<code> (25, 26, 28, 29, 30, 31, 35).</p>
+<p><strong>COMP-LAUN-004</strong> — The </code>TIERS<code> dict SHALL map role keys to module lists, and </code>"full_team"<code> SHALL resolve to the de-duplicated union of all role module lists plus </code>"24"<code> and </code>"36"<code>.</p>
+<p><strong>COMP-LAUN-005</strong> — The </code>SERVER_MODULES<code> constant SHALL be </code>{"22", "23", "24"}<code>. The </code>launch()<code> function SHALL separate module IDs into </code>poller_ids<code> (not in </code>SERVER_MODULES<code>) and </code>server_needed<code> (in </code>SERVER_MODULES<code>).</p>
+<p><strong>COMP-LAUN-006</strong> — For each </code>poller_id<code>, the </code>launch()<code> function SHALL create a </code>multiprocessing.Process<code> with </code>target=start_module<code>, </code>args=(module_id,)<code>, and </code>name=MODULE_NAMES[module_id]<code>, call </code>p.start()<code>, and append to the </code>processes<code> list.</p>
+<p><strong>COMP-LAUN-007</strong> — If any </code>server_needed<code> module IDs are present, </code>launch()<code> SHALL print an informational notice directing the operator to start </code>gaos_server.py<code> in a separate terminal. It SHALL NOT attempt to start these modules as polling processes.</p>
+<p><strong>COMP-LAUN-008</strong> — The </code>launch()<code> function SHALL call </code>p.join()<code> for all poller processes, blocking until all exit. On </code>KeyboardInterrupt<code>, it SHALL call </code>p.terminate()<code> for each process and print a shutdown message.</p>
+<p><strong>COMP-LAUN-009</strong> — The </code>start_module(module_id)<code> function SHALL call </code>importlib.import_module(MODULE_FILES[module_id])<code> and then call </code>module.run()<code>. Exceptions from </code>run()<code> will propagate naturally and terminate that child process only.</p>
+<p><strong>COMP-LAUN-010</strong> — The CLI </code>main()<code> function SHALL handle the following command-line patterns: no args or </code>help<code> → print usage; </code>list<code> → print all modules grouped by role; </code>module &lt;id&gt;<code> → launch single module à la carte; </code>&lt;role_key&gt;<code> → launch the corresponding tier. Unknown module IDs and unknown role keys SHALL print a user-friendly error message and return without raising.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>2.4 gaos_server.py — Flask Web Server</h3>
+<p><strong>COMP-SRV-001</strong> — The Flask application SHALL be created as </code>app = Flask(<strong>name</strong>)<code> with the alias </code>application = app<code> for gunicorn compatibility.</p>
+<p><strong>COMP-SRV-002</strong> — On module load, </code>_load()<code> SHALL call </code>core.load_config()<code> and assign the result to the module-level </code>cfg<code> dict.</p>
+<p><strong>COMP-SRV-003</strong> — The </code>_get_gmail()<code> function SHALL lazily connect Gmail on first call that requires it (currently no route uses Gmail directly; this is provided for future use). If connection fails it SHALL log a WARNING and return </code>None<code>.</p>
+<p><strong>COMP-SRV-004</strong> — Modules 22, 23, and 24 SHALL be imported lazily via </code>_chatbot()<code>, </code>_whatsapp()<code>, and </code>_voice()<code> functions respectively. Each SHALL attempt </code>from modules import module_NN_xxx as m<code> on first call and cache the result. If import fails it SHALL log an ERROR and return </code>None<code>.</p>
+<p><strong>COMP-SRV-005</strong> — </code>GET /health<code> SHALL return HTTP 200 with Content-Type </code>application/json<code> and body </code>{"status": "ok", "modules": {"chatbot": bool, "whatsapp": bool, "voice": bool}, "config_loaded": bool, "gmail_connected": bool}<code>. It SHALL never return a non-200 status under normal server operation.</p>
+<p><strong>COMP-SRV-006</strong> — </code>POST /chat<code> SHALL: parse the JSON request body (force=True, default </code>{}<code>); extract </code>session_id<code> (default </code>"default"<code>) and </code>message<code> (stripped); return HTTP 400 with </code>{"error": "message is required"}<code> if message is empty; call </code>m.handle_message(cfg, session_id, message)<code> from the Module 22 handler; return </code>{"reply": reply}<code> as JSON. If Module 22 is unavailable it SHALL return HTTP 503. On any other exception it SHALL return HTTP 500 with a safe error reply.</p>
+<p><strong>COMP-SRV-007</strong> — </code>POST /whatsapp<code> SHALL: extract </code>Body<code> and </code>From<code> from </code>request.form<code>; if either is empty, return an empty TwiML </code>&lt;Response/&gt;<code>; call </code>m.handle_message(cfg, sender, body)<code> from the Module 23 handler; return the reply wrapped in TwiML </code>&lt;Message&gt;<code> with </code>mimetype="text/xml"<code>. On unavailability or exception it SHALL return a TwiML message with an appropriate fallback text.</p>
+<p><strong>COMP-SRV-008</strong> — </code>POST /voice<code> SHALL: extract </code>CallSid<code> from </code>request.form<code>; call </code>m.greeting(cfg, call_sid)<code> from the Module 24 handler; return the resulting TwiML with </code>mimetype="text/xml"<code>. On unavailability it SHALL return </code>twiml_say_hangup("Thank you for calling. Please try again shortly.")<code>.</p>
+<p><strong>COMP-SRV-009</strong> — </code>POST /voice/handle<code> SHALL: extract </code>CallSid<code>, </code>From<code>, and </code>SpeechResult<code> from </code>request.form<code>; call </code>m.handle_turn(cfg, call_sid, caller, speech_text)<code> from Module 24; return TwiML. On unavailability or exception it SHALL return a </code>twiml_say_hangup<code> response.</p>
+<p><strong>COMP-SRV-010</strong> — </code>GET /widget.js<code> SHALL serve the file </code>static/widget.js<code> from the directory containing </code>gaos_server.py<code>, with </code>mimetype="application/javascript"<code>.</p>
+<p><strong>COMP-SRV-011</strong> — When run directly (</code><strong>name</strong> == "<strong>main</strong>"<code>), the server SHALL read </code>port<code> from </code>cfg.get("server", {}).get("port", 8080)<code> and start with </code>app.run(host="0.0.0.0", port=port, debug=False)<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>2.5 gaos_install.py — Industry Pack Installer</h3>
+<p><strong>COMP-INST-001</strong> — The </code>TAB_HEADERS<code> dict SHALL define column header lists for all standard and pack-specific tab names. Tab names defined SHALL include at minimum all 25 standard tabs listed in Section 5 of this document.</p>
+<p><strong>COMP-INST-002</strong> — The </code>load_packs()<code> function SHALL read and JSON-parse </code>industry_packs.json<code> from the same directory as </code>gaos_install.py<code>. On </code>FileNotFoundError<code> or </code>JSONDecodeError<code> it SHALL print a descriptive error and call </code>sys.exit(1)<code>.</p>
+<p><strong>COMP-INST-003</strong> — The </code>install_pack(pack_key)<code> function SHALL perform five steps in sequence: (1) create all sheet tabs; (2) seed </code>FAQ_Knowledge_Base<code>; (3) seed </code>Chatbot_Knowledge<code> if different from FAQ tab; (4) seed </code>Licences<code>; (5) write </code>contract_template.txt<code>. It SHALL then merge tab keys into </code>config.json<code>.</p>
+<p><strong>COMP-INST-004</strong> — The </code>_create_tabs(sheet_id, tabs)<code> function SHALL call </code>core.sheets_find_or_create_tab<code> for each tab in the pack's </code>sheet_tabs<code> dict, passing the header row from </code>TAB_HEADERS<code> if the tab name is present there.</p>
+<p><strong>COMP-INST-005</strong> — The </code>_seed_faq(sheet_id, tab_name, faq_rows)<code> function SHALL first call </code>core.sheets_read_all<code> to check for existing rows. If the tab already has rows, it SHALL print a skip message and return without writing. This prevents duplicate seeding on re-runs.</p>
+<p><strong>COMP-INST-006</strong> — The </code>_seed_licences<code> function SHALL follow the same pre-check-and-skip pattern as </code>_seed_faq<code>. Each licence row written SHALL have the format </code>[Description, "" (expiry to fill), alert_days_before, "Active", ""]<code>.</p>
+<p><strong>COMP-INST-007</strong> — The </code>_update_config_tabs<code> function SHALL read </code>config.json<code>, merge each </code>key: tab_name<code> from the pack's </code>sheet_tabs<code> dict into </code>cfg["google_sheets"]["tabs"]<code> (only for keys not already present), and write the updated config back. It SHALL gracefully handle a missing </code>config.json<code>.</p>
+<p><strong>COMP-INST-008</strong> — Before provisioning, </code>install_pack<code> SHALL verify that </code>google_sheets.sheet_id<code> in </code>config.json<code> is a non-empty string that does not equal </code>"YOUR_GOOGLE_SHEET_ID_HERE"<code>. If this check fails it SHALL print a descriptive error and call </code>sys.exit(1)<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>3. Module-Level Requirements</h2>
+<h3>Zone 1 — React</h3>
+<h4>Module 01 — Invoice Scanner</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 01</th>
+<th><strong>Name:</strong> Invoice Scanner</th>
+<th><strong>Zone:</strong> React</th>
+</tr>
+</table>
+<p><strong>Inputs:</strong> Gmail message with PDF attachment; </code>config.json<code></p>
+<p><strong>Processing:</strong></p>
+<p>1. The module SHALL call </code>core.gmail_get_message<code> to retrieve sender information.</p>
+<p>2. The module SHALL call </code>core.gmail_download_pdf<code> to retrieve attachment bytes and filename.</p>
+<p>3. If no PDF is found, the module SHALL call </code>core.gmail_mark_read<code> and return </code>False<code>.</p>
+<p>4. The module SHALL call </code>core.extract_pdf_text<code> on the PDF bytes.</p>
+<p>5. If the extracted text is empty (scanned PDF), the module SHALL mark as read and return </code>False<code>.</p>
+<p>6. The module SHALL submit the first 4,000 characters of PDF text to the AI via </code>core.ask_deepseek<code> requesting JSON with keys </code>VendorName<code>, </code>InvoiceDate<code> (YYYY-MM-DD), </code>TotalAmount<code>, </code>TaxAmount<code>, </code>InvoiceNumber<code>.</p>
+<p>7. The module SHALL call </code>_is_duplicate(cfg, vendor, invoice_date, invoice_number)<code> which reads Invoice_Log and returns </code>True<code> if a row with the same VendorName+InvoiceDate OR the same InvoiceNumber already exists. If duplicate, the module SHALL log a WARNING and return </code>False<code> without writing any row.</p>
+<p>8. The module SHALL call </code>_anomaly_note(cfg, amount_str)<code> which reads the </code>invoice_avg<code> key from GAOS_Memory; if the parsed amount exceeds 2.5× the average, it returns an anomaly warning string; otherwise returns </code>""<code>.</p>
+<p>9. The module SHALL append an 8-column row to </code>Invoice_Log<code> containing: VendorName, InvoiceDate, TotalAmount, TaxAmount, InvoiceNumber, sender address, timestamp, anomaly note.</p>
+<p>10. The module SHALL archive the PDF bytes via </code>core.archive_file<code> to </code>settings.archive_folder<code> with filename </code>{VendorName}_{original_filename}<code>.</p>
+<p>11. The module SHALL send an alert email to </code>gmail.alert_email<code> summarising the extracted fields, including InvoiceNumber and any anomaly note.</p>
+<p>12. The module SHALL call </code>core.gmail_mark_read<code>.</p>
+<p><strong>Outputs:</strong> Row in Invoice_Log (8 columns); archived PDF; alert email to owner</p>
+<p><strong>Error Behaviour:</strong> Any per-message exception SHALL be caught, logged as ERROR, and processing SHALL continue with the next message. AI extraction failure SHALL use fallback values </code>{"VendorName": "Extraction Failed", ...}<code>. Duplicate detection failure SHALL not prevent processing.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 02 — Lead Catcher</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 02</th>
+<th><strong>Name:</strong> Lead Catcher</th>
+<th><strong>Zone:</strong> React</th>
+</tr>
+</table>
+<p><strong>Inputs:</strong> Incoming enquiry email; business name from config</p>
+<p><strong>Processing:</strong></p>
+<p>1. The module SHALL immediately apply the Gmail label </code>"GAOS/Lead"<code> to the message (before any processing) to prevent Module 03 double-processing.</p>
+<p>2. The module SHALL retrieve message headers and body text.</p>
+<p>3. If body text is empty, the module SHALL mark as read and return </code>False<code>.</p>
+<p>4. The module SHALL submit the first 2,000 characters of body text to AI requesting JSON keys: </code>LeadName<code>, </code>LeadEnquiry<code>, </code>SuggestedReply<code>, </code>LeadScore<code> (</code>"Hot"<code>, </code>"Warm"<code>, or </code>"Cold"<code>).</p>
+<p>5. On AI failure, the module SHALL log an ERROR, mark as read, and return </code>False<code>.</p>
+<p>6. The module SHALL call </code>core.gmail_create_draft<code> with the suggested reply addressed to the sender.</p>
+<p>7. The module SHALL append a row to </code>Lead_Log<code>: LeadName, sender email, enquiry summary, LeadScore, timestamp. The </code>Status<code> column SHALL store the AI-assigned score (</code>"Hot"<code>, </code>"Warm"<code>, or </code>"Cold"<code>).</p>
+<p>8. If Twilio is configured (account_sid does not contain </code>"YOUR_"<code>), the module SHALL send a WhatsApp alert to </code>twilio.owner_mobile<code>. For </code>"Hot"<code> leads, the message prefix SHALL be </code>"🔥 HOT LEAD"<code>; for others it SHALL be </code>"New lead"<code>.</p>
+<p>9. The module SHALL call </code>core.gmail_mark_read<code>.</p>
+<p><strong>Outputs:</strong> Gmail label; draft reply; Lead_Log row; WhatsApp alert</p>
+<p><strong>Error Behaviour:</strong> Per-message exceptions are caught by the calling loop.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 03 — Urgent Lead Alert</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 03</th>
+<th><strong>Name:</strong> Urgent Lead Alert</th>
+<th><strong>Zone:</strong> React</th>
+</tr>
+</table>
+<p><strong>Inputs:</strong> High-urgency enquiry email</p>
+<p><strong>Processing:</strong></p>
+<p>1. The module SHALL search for unread emails that match its urgency criteria AND do NOT have the </code>GAOS/Lead<code> label.</p>
+<p>2. The module SHALL submit up to 1,500 characters of body text to AI requesting JSON keys: </code>Name<code>, </code>Need<code> (5 words max), </code>Phone<code>.</p>
+<p>3. The module SHALL fire an SMS to </code>twilio.owner_mobile<code> with the message </code>"URGENT LEAD: {Name} wants {Need}. Call back now: {Phone}"<code>.</p>
+<p>4. On AI failure, the module SHALL use fallback values and still fire the SMS.</p>
+<p>5. The module SHALL mark the message as read.</p>
+<p><strong>Outputs:</strong> SMS to owner</p>
+<p><strong>Error Behaviour:</strong> If Twilio is not configured, the module SHALL skip SMS silently.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 04 — Review Requester</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 04</th>
+<th><strong>Name:</strong> Review Requester</th>
+<th><strong>Zone:</strong> React</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> The module SHALL read all rows from </code>Completed_Jobs<code>. For each row where </code>Status<code> indicates completion and </code>Review Sent<code> is blank, it SHALL send an email to the client's address containing the </code>business.google_review_link<code> and update the </code>Review Sent<code> column.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 05 — Contract Sender</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 05</th>
+<th><strong>Name:</strong> Contract Sender</th>
+<th><strong>Zone:</strong> React</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> For each row in </code>Contract_Log<code> where status indicates a new contract and </code>Contract Sent<code> is blank, the module SHALL read </code>contract_template.txt<code>, substitute client-specific placeholders, email the contract to the client, and update the </code>Contract Sent<code> column.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 06 — FAQ Auto-Reply</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 06</th>
+<th><strong>Name:</strong> FAQ Auto-Reply</th>
+<th><strong>Zone:</strong> React</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> The module SHALL read all rows from </code>FAQ_Knowledge_Base<code>. For each matching unread email, it SHALL submit the question to AI with the knowledge base content and create a draft reply if the confidence threshold is met (≥90%). It SHALL NOT auto-send; drafts are for owner review. When the AI returns </code>CanAnswer: false<code>, the module SHALL append a row to the </code>FAQ_Gaps<code> tab (default name </code>"FAQ_Gaps"<code>, configurable via tab key </code>faq_gaps<code>) containing: email subject (truncated to 120 chars), body text (truncated to 200 chars), sender address, and timestamp. This enables the owner to identify recurring unanswered questions and expand the knowledge base.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 07 — Team Broadcaster</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 07</th>
+<th><strong>Name:</strong> Team Broadcaster</th>
+<th><strong>Zone:</strong> React</th>
+</tr>
+</table>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>Zone 2 — Chase</h3>
+<h4>Module 08 — Unified Item Chaser</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 08</th>
+<th><strong>Name:</strong> Unified Item Chaser</th>
+<th><strong>Zone:</strong> Chase</th>
+</tr>
+</table>
+<p><strong>Inputs:</strong> </code>Invoice_Log<code>, </code>Proposals<code>, </code>Pending_Documents<code> tabs</p>
+<p><strong>Processing:</strong></p>
+<p>The module SHALL process three named </code>ChaseConfig<code> entries in sequence:</p>
+<p></em>Payment Chaser:<em></p>
+<ul style="margin-left: 0px;"><li>Tab: </code>Invoice_Log<code> (key </code>invoices<code>)</li></ul>
+<ul style="margin-left: 0px;"><li>Date column: </code>Invoice Date<code>; Status column: </code>Status<code>; Done values: </code>(paid, cancelled, void)<code></li></ul>
+<ul style="margin-left: 0px;"><li>Chase column: </code>Chase Sent<code>; Email column: </code>Source Email<code>; Name column: </code>Vendor<code></li></ul>
+<ul style="margin-left: 0px;"><li>Threshold: 14 days from Invoice Date</li></ul>
+<p></em>Proposal Chaser:<em></p>
+<ul style="margin-left: 0px;"><li>Tab: </code>Proposals<code> (key </code>proposals<code>)</li></ul>
+<ul style="margin-left: 0px;"><li>Date column: </code>Proposal Date<code>; Status column: </code>Status<code>; Done values: </code>(accepted, declined, cancelled)<code></li></ul>
+<ul style="margin-left: 0px;"><li>Chase column: </code>Chase Sent<code>; Email column: </code>Client Email<code>; Name column: </code>Client Name<code></li></ul>
+<ul style="margin-left: 0px;"><li>Threshold: 5 days from Proposal Date</li></ul>
+<p></em>Document Chaser:<em></p>
+<ul style="margin-left: 0px;"><li>Tab: </code>Pending_Documents<code> (key </code>pending_documents<code>)</li></ul>
+<ul style="margin-left: 0px;"><li>Date column: </code>Requested Date<code>; Status column: </code>Received<code>; Done values: </code>(yes, received, ✓)<code></li></ul>
+<ul style="margin-left: 0px;"><li>Chase column: </code>Chased<code>; Email column: </code>Client Email<code>; Name column: </code>Client Name<code></li></ul>
+<ul style="margin-left: 0px;"><li>Threshold: 3 days from Requested Date</li></ul>
+<p>For each </code>ChaseConfig<code>, the generic engine SHALL:</p>
+<p>1. Read all rows from the tab.</p>
+<p>2. For each row: skip if status is in </code>done_values<code>; skip if email is empty.</p>
+<p>3. Parse the date column value using format </code>"%Y-%m-%d"<code> (first 10 characters). Skip rows with unparseable dates.</p>
+<p>4. For non-escalating chasers (proposals, documents): skip if chase column equals </code>"sent"<code> (case-insensitive) or if days elapsed &lt; </code>chaser.days<code>.</p>
+<p>5. For the escalating Payment Chaser: determine the current tier from the </code>Chase Sent<code> cell value (</code>""<code> or </code>"no"<code> → tier 0; </code>"sent"<code> or </code>"sent-1"<code> → tier 1; </code>"sent-2"<code> → tier 2; </code>"sent-3"<code> → tier 3). Skip if already at the maximum tier (tier 3). The threshold for the next tier is taken from </code>escalation_days[current_tier]<code> (values: 14, 21, 30). For tier-0 rows where the vendor name matches a known late payer from GAOS_Memory, the threshold SHALL be reduced to </code>min(14, 7) = 7<code> days.</p>
+<p>6. Before sending any chase email, call </code>_recently_emailed(gmail, email)<code> which searches the Gmail sent folder for </code>to:{email} in:sent newer_than:2d<code>. If a message was sent to that address in the last 48 hours, skip the row and log an INFO.</p>
+<p>7. For escalating chasers, call </code>build_payment_email(row, cfg, level=next_tier)<code> where level 1 is polite, level 2 is firm, level 3 is final notice. Mark the cell </code>"Sent-{next_tier}"<code>.</p>
+<p>8. For non-escalating chasers, call the appropriate builder and mark the cell </code>"Sent"<code>.</p>
+<p>9. Send the email via </code>core.gmail_send<code>.</p>
+<p>10. Update the chase column cell using </code>core.sheets_update_cell(sheet_id, tab, row_index + 2, chase_col, mark)<code>.</p>
+<p>The </code>run_all_chasers<code> function SHALL load the late-payer list from GAOS_Memory once (via </code>_get_late_payers(cfg)<code>) and pass it to each </code>check_and_chase<code> call.</p>
+<p><strong>Outputs:</strong> Chase emails (Sent-1/Sent-2/Sent-3 for payments; Sent for proposals/documents); updated Sheets cells</p>
+<p><strong>Error Behaviour:</strong> Per-chaser exceptions are caught and logged; remaining chasers still execute.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 10 — Appointment Reminder</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 10</th>
+<th><strong>Name:</strong> Appointment Reminder</th>
+<th><strong>Zone:</strong> Chase</th>
+</tr>
+</table>
+<p><strong>Processing:</strong></p>
+<p>1. The module SHALL read all rows from </code>Appointments<code>.</p>
+<p>2. For each row: parse </code>Date<code> (YYYY-MM-DD) and </code>Time<code> (HH:MM) into a </code>datetime<code> object.</p>
+<p>3. If parse fails, skip the row.</p>
+<p>4. Before sending any reminder, call </code>_client_requested_reschedule(gmail, email)<code> which searches Gmail for </code>from:{email} newer_than:3d<code> and scans for reschedule keywords (e.g. "reschedule", "change appointment", "can we move", "different time", "postpone"). If a reschedule request is detected, update the </code>Status<code> column to </code>"Reschedule Requested"<code> and skip the reminder.</p>
+<p>5. Calculate </code>hours_until = (appt_dt - datetime.now()).total_seconds() / 3600<code>.</p>
+<p>6. If </code>21 &lt;= hours_until &lt;= 25<code> and the </code>Reminder Sent<code> column is blank (24-hour reminder): send SMS and email; update </code>Reminder Sent<code>.</p>
+<p>7. If </code>1 &lt;= hours_until &lt;= 3<code> and the </code>2h Sent<code> equivalent column is blank (2-hour reminder): send SMS and email; update the 2h column.</p>
+<p>8. SMS message format: </code>"Hi {client}, {prefix} — you have an appointment with {business} at {time_str}. Reply STOP to opt out."<code></p>
+<p><strong>Outputs:</strong> Reminder SMS and email; updated Sheets columns; </code>Status<code> updated to </code>"Reschedule Requested"<code> when detected</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 12 — No-Show Follow-Up</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 12</th>
+<th><strong>Name:</strong> No-Show Follow-Up</th>
+<th><strong>Zone:</strong> Chase</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> For appointments where the scheduled time has passed today, status is not "attended" or equivalent, and no no-show communication has been sent, the module SHALL send a follow-up email/SMS and update the </code>No_Show_Sent<code> column.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>Zone 3 — Report</h3>
+<h4>Module 13 — Daily Digest</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 13</th>
+<th><strong>Name:</strong> Daily Digest</th>
+<th><strong>Zone:</strong> Report</th>
+</tr>
+</table>
+<p><strong>Processing:</strong></p>
+<p>1. The module SHALL read row counts from: </code>Lead_Log<code>, </code>Invoice_Log<code>, </code>Completed_Jobs<code>, </code>Appointments<code>.</p>
+<p>2. It SHALL count yesterday's rows by matching the date column against </code>(datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")<code>.</p>
+<p>3. It SHALL construct a plain-text summary of the counts and submit to AI with the prompt requesting a 200-word or fewer email body in professional-but-warm tone, referencing the date and key highlights.</p>
+<p>4. It SHALL send the AI-generated digest email to </code>gmail.alert_email<code> with subject including the date.</p>
+<p>5. After sending the email, if </code>slack.webhook_url<code> is configured and does not contain </code>"YOUR_"<code>, it SHALL call </code>core.post_to_slack<code> with a message containing the date as a bold header followed by the first 12 lines of the digest body.</p>
+<p><strong>Outputs:</strong> Daily digest email to owner; Slack post (if configured)</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 14 — Weekly Revenue Snapshot</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 14</th>
+<th><strong>Name:</strong> Weekly Revenue Snapshot</th>
+<th><strong>Zone:</strong> Report</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Reads </code>Invoice_Log<code> for the past 7 days, sums amounts, compares with prior week, and emails an AI-generated revenue summary.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 15 — Lead Pipeline Report</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 15</th>
+<th><strong>Name:</strong> Lead Pipeline Report</th>
+<th><strong>Zone:</strong> Report</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Reads </code>Lead_Log<code>, counts by status, calculates conversion rate, and emails an AI-generated pipeline summary.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 16 — Staff Timesheet Summary</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 16</th>
+<th><strong>Name:</strong> Staff Timesheet Summary</th>
+<th><strong>Zone:</strong> Report</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Reads </code>Timesheets<code> tab, aggregates hours per employee for the current week, and emails a summary.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>Zone 4 — Schedule</h3>
+<h4>Module 17 — Birthday and Anniversary Mailer</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 17</th>
+<th><strong>Zone:</strong> Schedule</th>
+</tr>
+</table>
+<h4>Module 18 — Social Post Scheduler</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 18</th>
+<th><strong>Zone:</strong> Schedule</th>
+</tr>
+</table>
+<h4>Module 19 — Monthly Invoice Generator</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 19</th>
+<th><strong>Zone:</strong> Schedule</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Reads </code>Retainer_Clients<code> tab. For active clients, generates an invoice email based on </code>Amount<code> and </code>Billing Day<code>, sends to client email, and appends a row to </code>Invoice_Log<code>. Invoice numbers SHALL use the format </code>INV-YYYYMM-NNN<code> where YYYYMM is the current year-month and NNN is a zero-padded sequence starting from where the current month's existing Invoice_Log entries left off (i.e. the module reads Invoice_Log to count rows already prefixed with </code>INV-{YYYYMM}<code> and increments from that count). This ensures sequential numbers across manual and automated invoices within the same month.</p>
+<h4>Module 20 — Licence and Expiry Alert</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 20</th>
+<th><strong>Zone:</strong> Schedule</th>
+</tr>
+</table>
+<h4>Module 21 — Re-Engagement Mailer</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 21</th>
+<th><strong>Zone:</strong> Schedule</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Reads </code>Clients<code> tab. For clients where </code>Last Contact<code> date is more than </code>INACTIVE_DAYS<code> (default 90) days in the past, sends a re-engagement email and updates the </code>Re-Engaged<code> column with the current timestamp. Before sending, the module SHALL check the </code>Status<code> column; if the value matches any of: </code>churned<code>, </code>inactive<code>, </code>cancelled<code>, </code>lost<code>, </code>do not contact<code> (case-insensitive), the row SHALL be skipped silently. Rows where </code>Re-Engaged<code> is already set to </code>"sent"<code> (case-insensitive) SHALL also be skipped.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>Zone 5 — Converse</h3>
+<h4>Module 22 — Website Chatbot</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 22</th>
+<th><strong>Zone:</strong> Converse</th>
+</tr>
+</table>
+<p>1. </code>handle_message(cfg, session_id, message)<code> SHALL retrieve or create a conversation history list for </code>session_id<code> in the module-level </code>_conversations<code> dict.</p>
+<p>2. It SHALL call </code>core.load_chatbot_knowledge(cfg)<code> to retrieve the knowledge base.</p>
+<p>3. It SHALL call </code>build_system_prompt(cfg, knowledge)<code> to construct the system prompt limiting replies to 60 words.</p>
+<p>4. It SHALL append </code>{"role": "user", "content": message}<code> to the history.</p>
+<p>5. It SHALL call </code>core.chat_deepseek(api_key, history[-MAX_HISTORY:], system_prompt)<code>.</p>
+<p>6. It SHALL append the assistant reply to the history.</p>
+<p>7. It SHALL call </code>detect_and_log_lead(cfg, session_id, message, history)<code> to capture any email addresses.</p>
+<p>8. It SHALL return the reply string.</p>
+<p><strong>COMP-SRV note:</strong> </code>MAX_HISTORY = 10<code> turns per session. History is stored in process memory; it does not persist across server restarts.</p>
+<p><strong>MOD-22-002</strong> — </code>detect_and_log_lead<code> SHALL use a regex to detect email addresses in the user message. On detection, it SHALL use AI to extract Name and Interest from the last 6 turns of conversation, then append a row to </code>Lead_Log<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 23 — WhatsApp AI Agent</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 23</th>
+<th><strong>Zone:</strong> Converse</th>
+</tr>
+</table>
+<p>1. </code>handle_message(cfg, sender, body)<code> SHALL check whether the message matches a Chief of Staff query pattern (if Module 35 is available) and delegate if so.</p>
+<p>2. Otherwise, it SHALL load chatbot knowledge and generate a reply via </code>core.chat_deepseek<code>.</p>
+<p>3. Conversation history SHALL be maintained per </code>sender<code> (phone number) in module-level memory.</p>
+<p>4. The reply SHALL be returned as a plain string for the server to wrap in TwiML.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 24 — AI Voice Agent</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 24</th>
+<th><strong>Zone:</strong> Converse</th>
+</tr>
+</table>
+<p>1. </code>greeting(cfg, call_sid)<code> SHALL load chatbot knowledge and return </code>core.twiml_gather(greeting_prompt, action_url)<code> where </code>action_url<code> is </code>"{server.public_url}/voice/handle"<code>.</p>
+<p>2. </code>handle_turn(cfg, call_sid, caller, speech_text)<code> SHALL: load or retrieve conversation history for </code>call_sid<code>; append the speech text as user turn; call </code>core.chat_deepseek<code> with the chatbot system prompt and history; append the reply; return </code>core.twiml_gather(reply, action_url)<code>.</p>
+<p>3. If </code>speech_text<code> is empty, the module SHALL return a polite </code>twiml_gather<code> re-prompting the caller.</p>
+<p>4. Voice output SHALL use AWS Polly voice </code>"Polly.Amy"<code> in </code>language="en-GB"<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>Zone 6 — Learn</h3>
+<h4>Module 25 — GAOS Learn</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 25</th>
+<th><strong>Zone:</strong> Learn</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Executes the weekly learning cycle in order: </code>learn_invoices<code>, </code>learn_leads<code>, </code>learn_revenue<code>, </code>learn_faqs<code>, </code>learn_appointments<code>, </code>learn_chase_rate<code>, and calls </code>learn_appointment_peak()<code> from within </code>learn_appointments<code>. Each function reads the relevant tab, computes statistics, and calls </code>save_memory<code> to upsert key-value rows in </code>GAOS_Memory<code>.</p>
+<p></code>learn_chase_rate(cfg)<code> SHALL read all Invoice_Log rows, compute the proportion with a non-blank </code>Chase Sent<code> value that is not </code>"no"<code>, and if this proportion exceeds 40%, save the key </code>chase_rate<code> to GAOS_Memory with an advisory such as </code>"Chase rate is high — X% of invoices required chasing. Review payment terms."<code>.</p>
+<p></code>learn_appointment_peak()<code> (called from </code>learn_appointments<code>) SHALL classify each appointment's </code>Time<code> column into one of four named slots — morning (before 12:00), lunchtime (12:00–13:59), afternoon (14:00–17:59), evening (18:00 and later) — count appointments per slot, and save the name of the busiest slot to GAOS_Memory as </code>appointment_peak_time<code>.</p>
+<p><strong>MOD-25-002</strong> — </code>save_memory(cfg, key, value)<code> SHALL read all rows from </code>GAOS_Memory<code>, find an existing row with matching </code>Key<code>, and update its </code>Value<code> cell if found. If not found, it SHALL append a new row </code>[key, value, timestamp()]<code>.</p>
+<p><strong>MOD-25-003</strong> — </code>inject(cfg, base_prompt)<code> SHALL call </code>get_context(cfg)<code> and, if a non-empty context string is returned, prepend it to </code>base_prompt<code> as </code>"{context}\n\n{base_prompt}"<code>. If no memory exists, it SHALL return </code>base_prompt<code> unchanged.</p>
+<p><strong>MOD-25-004</strong> — Minimum data thresholds for learning functions: </code>learn_invoices<code> and </code>learn_leads<code> SHALL require at least 5 rows. </code>learn_revenue<code> SHALL require at least 10 rows. Functions SHALL return silently without writing memory if the threshold is not met.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 26 — Client Pulse</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 26</th>
+<th><strong>Zone:</strong> Learn</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Reads </code>Clients<code> tab. For clients where </code>Last Contact<code> is more than 30 days ago, appends to </code>Client_Pulse_Log<code>, saves the at-risk client names to GAOS_Memory as </code>at_risk_clients<code>, and sends an alert email to the owner listing silent clients. After identifying at-risk clients, the module SHALL cross-reference them against Invoice_Log: for any at-risk client whose name matches a vendor with an unpaid invoice (Status not in </code>paid<code>, </code>cancelled<code>, </code>void<code>), that client SHALL be added to a </code>danger<code> list. If the danger list is non-empty, the module SHALL save a </code>danger_signals<code> key to GAOS_Memory with a message of the form </code>"Double risk: {names} — relationship cooling AND unpaid invoice. Immediate personal contact recommended."<code></p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 27 — Document Sentinel</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 27</th>
+<th><strong>Zone:</strong> Learn</th>
+</tr>
+</table>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 28 — Planning Radar</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 28</th>
+<th><strong>Zone:</strong> Learn</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Fetches planning applications from the council planning portal URL configured in </code>business.council_planning_url<code>. Filters for applications near </code>business.postcode<code>. Logs new applications to the lead or notes log and emails relevant findings to the owner.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>Zone 0 — Sense</h3>
+<h4>Module 29 — Gazette Monitor</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 29</th>
+<th><strong>Zone:</strong> Sense</th>
+</tr>
+</table>
+<p><strong>Inputs:</strong> London Gazette API; </code>Invoice_Log<code> and </code>Clients<code> tabs</p>
+<p><strong>Processing:</strong></p>
+<p>1. The module SHALL fetch insolvency notices using </code>GAZETTE_API<code> with </code>notice-type=2700<code>, </code>start-publish-date=(today - 1 day)<code>, </code>results-page-size=50<code>, </code>format=application/json<code>.</p>
+<p>2. It SHALL fetch strike-off notices using </code>notice-type=2750<code> with the same parameters.</p>
+<p>3. It SHALL fetch estate notices using </code>notice-type=2600<code>.</p>
+<table>
+<tr>
+<th>LTD</th>
+<th>PLC</th>
+<th>LLP</th>
+</tr>
+</table>
+<p>6. </code>fuzzy_match(gazette_name, client_name)<code> SHALL: strip </code>LIMITED/LTD/PLC/LLP<code> from both names; return </code>True<code> if one contains the other, or if both names share the same first 6 characters (where length &gt; 6).</p>
+<p>7. For estate notices, up to 10 notices SHALL be logged to </code>Lead_Log<code> as estate leads.</p>
+<p>8. If any insolvency or strike-off matches are found, the module SHALL send an immediate risk alert email to </code>gmail.alert_email<code>.</p>
+<p><strong>Outputs:</strong> </code>Gazette_Hits<code> tab rows; alert email; </code>Lead_Log<code> entries for estate notices</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 30 — Land Registry Radar</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 30</th>
+<th><strong>Zone:</strong> Sense</th>
+</tr>
+</table>
+<p><strong>Processing:</strong></p>
+<p>1. The module SHALL download the Land Registry Price Paid monthly update from </code>https://publicdata.landregistry.gov.uk/market-trend-data/price-paid-data/a/pp-monthly-update-new-version.csv<code>.</p>
+<p>2. It SHALL parse the CSV (using </code>csv.reader<code> on </code>io.StringIO<code>) and filter rows by postcode prefix matching </code>business.postcode<code>.</p>
+<p>3. For each matching sale, it SHALL compute a renovation potential score: property type score (D=4, S=3, T=3, F=1, O=2) + price bracket score (≥£600k=4, ≥£350k=3, ≥£200k=2, ≥£100k=1, else 0).</p>
+<p>4. It SHALL log the top-scored properties to </code>Land_Registry_Leads<code> tab.</p>
+<p>5. It SHALL email a summary to the owner if new leads were found.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 31 — Rate and Macro Pulse</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 31</th>
+<th><strong>Zone:</strong> Sense</th>
+</tr>
+</table>
+<p><strong>Processing:</strong></p>
+<p>1. BoE Rate: The module SHALL fetch the BoE IADB CSV for series </code>IUMABEDR<code> (base rate). It SHALL compare the latest rate against </code>RATE_MEMORY_KEY<code> stored in </code>GAOS_Memory<code>. On a change, it SHALL alert the owner and draft client outreach emails.</p>
+<p>2. ONS CPI: On the 1st of each month, the module SHALL fetch CPIH data from </code>https://api.beta.ons.gov.uk/v1/datasets/cpih01/...<code>. For each row in </code>Retainer_Clients<code>, it SHALL calculate inflation erosion since the contract's </code>Last Invoice<code> date. When erosion exceeds </code>EROSION_ALERT_THRESHOLD = 0.08<code> (8%), it SHALL flag the retainer for price review.</p>
+<p>3. Both data points SHALL be logged to </code>Macro_Log<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>Zone 7 — Marketer</h3>
+<h4>Module 32 — Newsletter Mailer</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 32</th>
+<th><strong>Zone:</strong> Marketer</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Reads </code>Newsletter_Queue<code> for active subscribers. Generates or reads newsletter content. Sends individual emails. Logs send status to </code>Campaign_Log<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 33 — Review Monitor</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 33</th>
+<th><strong>Zone:</strong> Marketer</th>
+</tr>
+</table>
+<p>1. Attempts to extract star rating using regex patterns from the email snippet and subject.</p>
+<p>2. Attempts to extract reviewer name from the snippet/subject.</p>
+<p>3. Submits to AI to draft an appropriate response (≤60 words for positive, ≤80 words for negative).</p>
+<p>4. Appends a row to </code>Reviews_Log<code>: reviewer, stars, snippet (120 chars), response draft, timestamp, status.</p>
+<p>5. For negative reviews (≤3 stars): sends SMS to </code>twilio.owner_mobile<code>; sends alert email to </code>gmail.alert_email<code> with the draft response; if </code>slack.webhook_url<code> is configured and not a placeholder, calls </code>core.post_to_slack<code> with a message including the star rating, reviewer name, snippet (150 chars), and a note that a draft response is ready.</p>
+<p>6. For positive reviews: sends an email to </code>gmail.alert_email<code> with the draft response for the owner to post.</p>
+<p>7. Marks the Gmail notification as read.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h4>Module 34 — Campaign Digest</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 34</th>
+<th><strong>Zone:</strong> Marketer</th>
+</tr>
+</table>
+<p><strong>Processing:</strong> Reads </code>Campaign_Log<code>. Summarises campaign performance (sent, opens, clicks, replies) using AI. Emails digest to owner.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>Zone 8 — Chief of Staff</h3>
+<h4>Module 35 — AI Chief of Staff</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 35</th>
+<th><strong>Zone:</strong> Chief of Staff</th>
+</tr>
+</table>
+<p><strong>Processing:</strong></p>
+<p>1. The module SHALL define an </code>IntelItem<code> dataclass with fields: </code>category<code> (urgent/warm/watch/good/info), </code>role<code> (which virtual role), </code>headline<code> (str), </code>detail<code> (str), </code>score<code> (float), </code>action<code> (str).</p>
+<p>2. The </code>gather_intelligence(cfg)<code> function SHALL read GAOS_Memory for a </code>danger_signals<code> key. If present, it SHALL create an </code>IntelItem<code> with </code>category="urgent"<code> and </code>score=85<code>. If no danger signals exist but </code>at_risk_clients<code> is present in GAOS_Memory, it SHALL create a </code>"watch"<code> IntelItem with </code>score=55<code>.</p>
+<p>3. At 07:30 daily, the module SHALL read data from all active role data sources, instantiate </code>IntelItem<code> objects for each actionable item, sort by score descending, construct an AI prompt, call </code>learn.inject(cfg, prompt)<code> to prepend the full GAOS_Memory context, submit to AI, and produce a briefing email and WhatsApp message.</p>
+<p>4. At 07:45 on Mondays, it SHALL produce a weekly strategic summary. The weekly-summary AI prompt SHALL also be passed through </code>learn.inject(cfg, prompt)<code> before submission.</p>
+<p>5. </code>handle_if_cos_query(cfg, sender, message)<code> SHALL be callable by Module 23. It SHALL detect natural-language queries matching patterns including: "what needs my attention", "who owes me money", "how many leads", "double risk", "danger signal". On a match, it SHALL construct an intelligence prompt, pass it through </code>learn.inject(cfg, prompt)<code>, generate an AI response, and return </code>(True, reply_text)<code>. If no pattern matches it SHALL return </code>(False, None)<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>Zone 9 — Utility</h3>
+<h4>Module 36 — Cost Rollup Reporter</h4>
+<table>
+<tr>
+<th><strong>ID:</strong> 36</th>
+<th><strong>Zone:</strong> Utility</th>
+</tr>
+</table>
+<p><strong>Processing:</strong></p>
+<p>1. The module SHALL read all rows from </code>Usage_Log<code>.</p>
+<p>2. It SHALL filter rows to the previous calendar month by matching the </code>Date<code> column prefix against </code>"{last_year}-{last_month:02d}"<code>.</p>
+<p>3. It SHALL aggregate total tokens and total cost per module name using a dict.</p>
+<p>4. It SHALL compute the grand total cost in GBP.</p>
+<p>5. It SHALL estimate subscription revenue from the active roles defined in </code>config.json<code>.</p>
+<p>6. It SHALL compute an estimated gross margin.</p>
+<p>7. It SHALL email the formatted report to </code>gmail.alert_email<code>.</p>
+<p>8. If no usage data exists for the period, it SHALL log an INFO and return without sending.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>4. Interface Requirements</h2>
+<h3>4.1 Gmail API</h3>
+<p><strong>IFACE-001</strong> — The system SHALL use </code>googleapiclient.discovery.build("gmail", "v1", credentials=creds)<code> to construct the Gmail service object.</p>
+<p><strong>IFACE-002</strong> — All Gmail API calls SHALL use </code>userId="me"<code> to operate on the authenticated account.</p>
+<p><strong>IFACE-003</strong> — The system SHALL use </code>gmail.users().messages().list(q=query, maxResults=N)<code> for inbox search. The </code>q<code> parameter SHALL use standard Gmail search operator syntax.</p>
+<p><strong>IFACE-004</strong> — Message retrieval SHALL use </code>format="full"<code> to retrieve headers, body parts, and attachment metadata in a single call.</p>
+<p><strong>IFACE-005</strong> — PDF attachments larger than the inline data threshold SHALL be retrieved via </code>gmail.users().messages().attachments().get(messageId=..., id=attachment_id)<code>.</p>
+<p><strong>IFACE-006</strong> — The Gmail API client SHALL use OAuth2 credentials with scopes </code>https://www.googleapis.com/auth/gmail.modify<code> and </code>https://www.googleapis.com/auth/gmail.compose<code> only.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>4.2 Google Sheets API</h3>
+<p><strong>IFACE-007</strong> — The system SHALL use </code>gspread<code> version 6.x as the Sheets client library.</p>
+<p><strong>IFACE-008</strong> — The spreadsheet SHALL be opened by key using </code>gspread.Client.open_by_key(sheet_id)<code>.</p>
+<p><strong>IFACE-009</strong> — Worksheet records SHALL be read via </code>worksheet.get_all_records(default_blank="")<code>, which returns a list of dicts keyed by the header row.</p>
+<p><strong>IFACE-010</strong> — Row appends SHALL use </code>worksheet.append_row(values, value_input_option="USER_ENTERED")<code> to allow Sheets to parse date strings and currency values.</p>
+<p><strong>IFACE-011</strong> — Cell updates SHALL use </code>worksheet.update_cell(row, col, value)<code> with 1-based row and column indices.</p>
+<p><strong>IFACE-012</strong> — The Sheets client SHALL authenticate via service account (preferred) or user OAuth token. Service account credentials SHALL be loaded from </code>service_account.json<code>. The service account SHALL have </code>Editor<code> access granted on the target spreadsheet.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>4.3 DeepSeek API</h3>
+<p><strong>IFACE-013</strong> — DeepSeek API calls SHALL be made to </code>https://api.deepseek.com/v1/chat/completions<code> via HTTPS POST.</p>
+<p><strong>IFACE-014</strong> — The request body SHALL be JSON with fields: </code>model<code> (</code>"deepseek-chat"<code>), </code>messages<code> (array of </code>{role, content}<code> objects), </code>max_tokens<code> (int), </code>temperature<code> (float). For JSON-mode requests, </code>response_format: {"type": "json_object"}<code> SHALL be added.</p>
+<p><strong>IFACE-015</strong> — The </code>Authorization<code> header SHALL be </code>Bearer &lt;api_key&gt;<code>.</p>
+<p><strong>IFACE-016</strong> — The response content SHALL be extracted from </code>response.json()["choices"][0]["message"]["content"]<code>. Token usage SHALL be read from </code>response.json()["usage"]["total_tokens"]<code>.</p>
+<p><strong>IFACE-017</strong> — The request timeout SHALL be 60 seconds.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>4.4 Groq API</h3>
+<p><strong>IFACE-018</strong> — Groq API calls SHALL be made to </code>https://api.groq.com/openai/v1/chat/completions<code> via HTTPS POST with the same request/response format as DeepSeek (OpenAI-compatible).</p>
+<p><strong>IFACE-019</strong> — The model identifier SHALL be </code>"llama-3.3-70b-versatile"<code>.</p>
+<p><strong>IFACE-020</strong> — The </code>response_format: json_object<code> parameter SHALL NOT be included in Groq requests. JSON extraction for Groq SHALL rely on prompt instructions and post-processing regex cleanup.</p>
+<p><strong>IFACE-021</strong> — The Groq circuit breaker cooldown SHALL be 300 seconds (5 minutes), shorter than DeepSeek's 600 seconds, reflecting the free-tier nature of the service.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>4.5 Twilio REST API</h3>
+<p><strong>IFACE-022</strong> — SMS and WhatsApp messages SHALL be sent via </code>POST https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json<code> with form data </code>{From, To, Body}<code> and HTTP Basic Authentication (</code>account_sid:auth_token<code>).</p>
+<p><strong>IFACE-023</strong> — WhatsApp sender and recipient numbers SHALL be prefixed with </code>"whatsapp:"<code> (e.g. </code>"whatsapp:+14155238886"<code>).</p>
+<p><strong>IFACE-024</strong> — Voice webhook responses SHALL be valid TwiML XML documents returned with </code>Content-Type: text/xml<code>. The </code>&lt;Gather&gt;<code> element SHALL specify </code>input="speech"<code>, </code>speechTimeout="auto"<code>, </code>language="en-GB"<code>, and the </code>action<code> URL pointing to </code>/voice/handle<code> on the public server.</p>
+<p><strong>IFACE-025</strong> — The </code>&lt;Say&gt;<code> voice element SHALL use </code>voice="Polly.Amy"<code> for all spoken responses.</p>
+<p><strong>IFACE-026</strong> — Twilio webhook </code>POST /whatsapp<code> delivers message data as HTML form fields (</code>Body<code>, </code>From<code>, </code>To<code>). The system SHALL read these from </code>request.form<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>4.6 Slack Webhook</h3>
+<p><strong>IFACE-027</strong> — Slack notifications SHALL be sent via </code>POST &lt;webhook_url&gt;<code> with </code>Content-Type: application/json<code> and body </code>{"text": "&lt;message&gt;"}<code>.</p>
+<p><strong>IFACE-028</strong> — The Slack webhook URL SHALL be stored in </code>config.json<code> at </code>slack.webhook_url<code>. If the value contains </code>"YOUR_"<code> or is absent, Slack calls SHALL be skipped silently.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>4.7 London Gazette API</h3>
+<p><strong>IFACE-029</strong> — Gazette notices SHALL be fetched from </code>https://www.thegazette.co.uk/notice/search<code> via HTTP GET with parameters: </code>notice-type<code> (code string), </code>start-publish-date<code> (YYYY-MM-DD), </code>results-page-size=50<code>, </code>format=application/json<code>.</p>
+<p><strong>IFACE-030</strong> — The </code>Accept: application/json<code> header SHALL be included in the request.</p>
+<p><strong>IFACE-031</strong> — The response JSON structure SHALL be examined for results under keys </code>results<code>, </code>_embedded.notices<code>, or </code>notices<code> (in that order). The module SHALL handle all three structures to account for Gazette API versioning.</p>
+<p><strong>IFACE-032</strong> — Notice type codes: insolvency = </code>"2700"<code>, strike-off = </code>"2750"<code>, estate = </code>"2600"<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>4.8 HM Land Registry API</h3>
+<p><strong>IFACE-033</strong> — Price Paid monthly data SHALL be downloaded from </code>https://publicdata.landregistry.gov.uk/market-trend-data/price-paid-data/a/pp-monthly-update-new-version.csv<code>.</p>
+<p><strong>IFACE-034</strong> — The CSV SHALL be decoded as UTF-8 and parsed with Python's </code>csv.reader<code>. Column positions follow the Land Registry Price Paid Data specification: index 0 = transaction ID, 1 = price, 2 = date of transfer, 3 = postcode, 4 = property type (D/S/T/F/O), 5 = new build flag, 6 = tenure, 7 = PAON, 8 = SAON, 9 = street, etc.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>4.9 Bank of England API</h3>
+<p><strong>IFACE-035</strong> — The BoE base rate SHALL be fetched from the IADB CSV endpoint: </code>https://www.bankofengland.co.uk/boeapps/database/_iadb-FromShowColumns.asp?csv.x=yes&amp;Datefrom=01/{m}/{y}&amp;Dateto=now&amp;SeriesCodes=IUMABEDR&amp;CSVF=TN&amp;UsingCodes=Y<code>.</p>
+<p><strong>IFACE-036</strong> — The response is a plain CSV. The latest rate row SHALL be the last row with a numeric value in the rate column.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h3>4.10 ONS Statistics API</h3>
+<p><strong>IFACE-037</strong> — CPI data SHALL be fetched from </code>https://api.beta.ons.gov.uk/v1/datasets/cpih01/editions/time-series/versions/20/observations?geography=K02000001&amp;aggregate=cpih1dim1A0<code>.</p>
+<p><strong>IFACE-038</strong> — The response is JSON. The latest CPIH index value SHALL be extracted from the most recent time period entry.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>5. Data Requirements</h2>
+<p>All persistent data SHALL be stored in named tabs of a single Google Sheets spreadsheet. Column names are case-sensitive and must match the definitions below. All dates SHALL be stored as strings in </code>YYYY-MM-DD<code> format unless otherwise noted.</p>
+<h3>DATA-001 — Invoice_Log</h3>
+<table>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Constraint</th>
+</tr>
+<tr>
+<td>Vendor</td>
+<td>String</td>
+<td>Vendor/supplier name from AI extraction (replaces legacy </code>Client<code>)</td>
+</tr>
+<tr>
+<td>Invoice Date</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Amount</td>
+<td>String</td>
+<td>Currency string, e.g. </code>"£1,250.00"<code> (also </code>TotalAmount<code>)</td>
+</tr>
+<tr>
+<td>Tax</td>
+<td>String</td>
+<td>Tax amount from AI extraction</td>
+</tr>
+<tr>
+<td>Invoice Number</td>
+<td>String</td>
+<td>AI-extracted invoice reference; used for deduplication</td>
+</tr>
+<tr>
+<td>Source Email</td>
+<td>String</td>
+<td>Sender email address from the PDF attachment email</td>
+</tr>
+<tr>
+<td>Timestamp</td>
+<td>String</td>
+<td>YYYY-MM-DD HH:MM:SS of when the row was written</td>
+</tr>
+<tr>
+<td>Notes</td>
+<td>String</td>
+<td>Anomaly flag (e.g. </code>"⚠ Amount 3.1× above average"<code>) or blank</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td>Free text; recognised values: </code>paid<code>, </code>cancelled<code>, </code>void<code></td>
+</tr>
+<tr>
+<td>Chase Sent</td>
+<td>String</td>
+<td></code>""<code> or </code>"no"<code> → unsent; </code>"Sent-1"<code> → first chase sent; </code>"Sent-2"<code> → second chase; </code>"Sent-3"<code> → final notice</td>
+</tr>
+<h3>DATA-002 — Lead_Log</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Name</td>
+<td>String</td>
+<td>AI-extracted lead name or </code>"there"<code></td>
+</tr>
+<tr>
+<td>Email</td>
+<td>String</td>
+<td>Sender email address</td>
+</tr>
+<tr>
+<td>Enquiry</td>
+<td>String</td>
+<td>AI-extracted enquiry summary</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td>AI-assigned score: </code>"Hot"<code>, </code>"Warm"<code>, or </code>"Cold"<code>. May be updated to </code>"Won"<code>, </code>"Converted"<code> etc. by the owner.</td>
+</tr>
+<tr>
+<td>Timestamp</td>
+<td>String</td>
+<td>YYYY-MM-DD HH:MM:SS</td>
+</tr>
+<h3>DATA-003 — Completed_Jobs</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>String</td>
+<td>Client name</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>String</td>
+<td>Client email</td>
+</tr>
+<tr>
+<td>Service</td>
+<td>String</td>
+<td>Service description</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td>Must contain completion indicator for Module 04</td>
+</tr>
+<tr>
+<td>Review Sent</td>
+<td>String</td>
+<td></code>""<code> or </code>"Sent"<code></td>
+</tr>
+<h3>DATA-004 — Contract_Log</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>String</td>
+<td>Client name</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>String</td>
+<td>Client email</td>
+</tr>
+<tr>
+<td>Service</td>
+<td>String</td>
+<td>Service description</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td>Contract status</td>
+</tr>
+<tr>
+<td>Contract Sent</td>
+<td>String</td>
+<td></code>""<code> or </code>"Sent"<code></td>
+</tr>
+<h3>DATA-005 — FAQ_Knowledge_Base / Chatbot_Knowledge</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Question</td>
+<td>String</td>
+<td>Non-empty; used as lookup key</td>
+</tr>
+<tr>
+<td>Answer</td>
+<td>String</td>
+<td>Non-empty; used as response content</td>
+</tr>
+<tr>
+<td>Category</td>
+<td>String</td>
+<td>Optional grouping label</td>
+</tr>
+<h3>DATA-006 — Appointments</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Time</td>
+<td>String</td>
+<td>HH:MM (24-hour)</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>String</td>
+<td>Client name</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>String</td>
+<td>Client email</td>
+</tr>
+<tr>
+<td>Phone</td>
+<td>String</td>
+<td>Mobile number for SMS</td>
+</tr>
+<tr>
+<td>Service</td>
+<td>String</td>
+<td>Appointment type</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td>e.g. </code>"confirmed"<code>, </code>"attended"<code>, </code>"no-show"<code></td>
+</tr>
+<tr>
+<td>Reminder Sent</td>
+<td>String</td>
+<td></code>""<code> or </code>"Sent"<code> (24h reminder)</td>
+</tr>
+<tr>
+<td>No_Show_Sent</td>
+<td>String</td>
+<td></code>""<code> or </code>"Sent"<code> (no-show follow-up)</td>
+</tr>
+<h3>DATA-007 — Proposals</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Proposal Date</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Client Name</td>
+<td>String</td>
+<td>Required for chase email</td>
+</tr>
+<tr>
+<td>Client Email</td>
+<td>String</td>
+<td>Required for chase email</td>
+</tr>
+<tr>
+<td>Value</td>
+<td>String</td>
+<td>Currency string, optional</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td>Recognised done values: </code>accepted<code>, </code>declined<code>, </code>cancelled<code></td>
+</tr>
+<tr>
+<td>Chase Sent</td>
+<td>String</td>
+<td></code>""<code> or </code>"Sent"<code></td>
+</tr>
+<h3>DATA-008 — Pending_Documents</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Requested Date</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Client Name</td>
+<td>String</td>
+<td>Required</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>String</td>
+<td>Required for chase email</td>
+</tr>
+<tr>
+<td>Document</td>
+<td>String</td>
+<td>Document description (shown in chase email)</td>
+</tr>
+<tr>
+<td>Received</td>
+<td>String</td>
+<td>Recognised done values: </code>yes<code>, </code>received<code>, </code>✓<code></td>
+</tr>
+<tr>
+<td>Chased</td>
+<td>String</td>
+<td></code>""<code> or </code>"Sent"<code></td>
+</tr>
+<h3>DATA-009 — Clients</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Name</td>
+<td>String</td>
+<td>Required</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>String</td>
+<td>Required</td>
+</tr>
+<tr>
+<td>Phone</td>
+<td>String</td>
+<td>Optional mobile number</td>
+</tr>
+<tr>
+<td>Type</td>
+<td>String</td>
+<td>Client category</td>
+</tr>
+<tr>
+<td>Last Contact</td>
+<td>String</td>
+<td>YYYY-MM-DD; used by Modules 21 and 26</td>
+</tr>
+<tr>
+<td>Re-Engaged</td>
+<td>String</td>
+<td>Timestamp of last re-engagement email, or </code>"sent"<code></td>
+</tr>
+<tr>
+<td>Notes</td>
+<td>String</td>
+<td>Optional</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td>Optional. Values recognised by Module 21: </code>churned<code>, </code>inactive<code>, </code>cancelled<code>, </code>lost<code>, </code>do not contact<code>. Rows with any of these values are excluded from re-engagement emails.</td>
+</tr>
+<h3>DATA-010 — Retainer_Clients</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Name</td>
+<td>String</td>
+<td>Required</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>String</td>
+<td>Required</td>
+</tr>
+<tr>
+<td>Amount</td>
+<td>String</td>
+<td>Monthly fee currency string</td>
+</tr>
+<tr>
+<td>Billing Day</td>
+<td>String</td>
+<td>Day of month for billing</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td></code>"Active"<code> or similar</td>
+</tr>
+<tr>
+<td>Last Invoice</td>
+<td>String</td>
+<td>YYYY-MM-DD; used by Module 31 for CPI erosion</td>
+</tr>
+<h3>DATA-011 — Licences</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Description</td>
+<td>String</td>
+<td>Licence/compliance item name</td>
+</tr>
+<tr>
+<td>Expiry Date</td>
+<td>String</td>
+<td>YYYY-MM-DD; blank until client fills in</td>
+</tr>
+<tr>
+<td>Alert Days Before</td>
+<td>Number</td>
+<td>Days before expiry to alert</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td></code>"Active"<code> or </code>"Expired"<code></td>
+</tr>
+<tr>
+<td>Last Alerted</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<h3>DATA-012 — Timesheets</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Week Ending</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Employee</td>
+<td>String</td>
+<td>Staff name</td>
+</tr>
+<tr>
+<td>Mon through Sat</td>
+<td>Number</td>
+<td>Hours worked each day</td>
+</tr>
+<tr>
+<td>Total Hours</td>
+<td>Number</td>
+<td>Sum of daily hours</td>
+</tr>
+<tr>
+<td>Notes</td>
+<td>String</td>
+<td>Optional</td>
+</tr>
+<h3>DATA-013 — Gazette_Hits</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Company</td>
+<td>String</td>
+<td>Company name from Gazette</td>
+</tr>
+<tr>
+<td>Notice Type</td>
+<td>String</td>
+<td></code>INSOLVENCY<code> or </code>STRIKE-OFF WARNING<code></td>
+</tr>
+<tr>
+<td>Details</td>
+<td>String</td>
+<td>Summary of notice</td>
+</tr>
+<tr>
+<td>Actioned</td>
+<td>String</td>
+<td></code>""<code> or </code>"Yes"<code></td>
+</tr>
+<h3>DATA-014 — Land_Registry_Leads</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>String</td>
+<td>Date of sale YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Address</td>
+<td>String</td>
+<td>Full property address</td>
+</tr>
+<tr>
+<td>Price</td>
+<td>String</td>
+<td>Sale price</td>
+</tr>
+<tr>
+<td>Buyer</td>
+<td>String</td>
+<td>Optional</td>
+</tr>
+<tr>
+<td>Seller</td>
+<td>String</td>
+<td>Optional</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td>Lead status</td>
+</tr>
+<tr>
+<td>Notes</td>
+<td>String</td>
+<td>Optional</td>
+</tr>
+<h3>DATA-015 — Macro_Log</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Type</td>
+<td>String</td>
+<td></code>"BOE_RATE"<code> or </code>"ONS_CPI"<code></td>
+</tr>
+<tr>
+<td>Value</td>
+<td>String</td>
+<td>Rate or index value</td>
+</tr>
+<tr>
+<td>Change</td>
+<td>String</td>
+<td>Delta from previous reading</td>
+</tr>
+<tr>
+<td>Notes</td>
+<td>String</td>
+<td>AI-generated commentary</td>
+</tr>
+<h3>DATA-016 — GAOS_Memory</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Date</td>
+<td>String</td>
+<td>YYYY-MM-DD HH:MM:SS of last update</td>
+</tr>
+<tr>
+<td>Category</td>
+<td>String</td>
+<td>Learning category (optional)</td>
+</tr>
+<tr>
+<td>Key</td>
+<td>String</td>
+<td>Unique key; used for upsert lookup</td>
+</tr>
+<tr>
+<td>Value</td>
+<td>String</td>
+<td>Plain-English memory statement</td>
+</tr>
+<tr>
+<td>Source</td>
+<td>String</td>
+<td>Module that wrote this row</td>
+</tr>
+</table>
+<table>
+<tr>
+<th>Key</th>
+<th>Written By</th>
+<th>Example Value</th>
+</tr>
+<tr>
+<td></code>invoice_avg<code></td>
+<td>Module 25 </code>learn_invoices<code></td>
+<td></code>"Average invoice value: £842.50 across 23 invoices"<code></td>
+</tr>
+<tr>
+<td></code>top_vendors<code></td>
+<td>Module 25 </code>learn_invoices<code></td>
+<td></code>"Top 3 vendors by invoice volume: ACME Ltd, Buildco, FastParts"<code></td>
+</tr>
+<tr>
+<td></code>late_payers<code></td>
+<td>Module 25 </code>learn_invoices<code></td>
+<td></code>"Suppliers with previous late payment chases: ACME Ltd, FastParts"<code></td>
+</tr>
+<tr>
+<td></code>lead_conversion<code></td>
+<td>Module 25 </code>learn_leads<code></td>
+<td></code>"Lead conversion rate: 34% (12 won from 35 leads)"<code></td>
+</tr>
+<tr>
+<td></code>appointment_peak_time<code></td>
+<td>Module 25 </code>learn_appointments<code></td>
+<td></code>"Busiest appointment slot: morning"<code></td>
+</tr>
+<tr>
+<td></code>chase_rate<code></td>
+<td>Module 25 </code>learn_chase_rate<code></td>
+<td></code>"Chase rate is high — 52% of invoices required chasing. Review payment terms."<code></td>
+</tr>
+<tr>
+<td></code>at_risk_clients<code></td>
+<td>Module 26</td>
+<td></code>"Clients with no contact in 30+ days: Acme Corp, Green Solutions Ltd"<code></td>
+</tr>
+<tr>
+<td></code>danger_signals<code></td>
+<td>Module 26</td>
+<td></code>"Double risk: Acme Corp — relationship cooling AND unpaid invoice. Immediate personal contact recommended."<code></td>
+</tr>
+<h3>DATA-017 — Actions_Log</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Timestamp</td>
+<td>String</td>
+<td>YYYY-MM-DD HH:MM:SS</td>
+</tr>
+<tr>
+<td>Module</td>
+<td>String</td>
+<td>Module identifier string</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>String</td>
+<td>Action description</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td></code>"ok"<code> or </code>"error"<code></td>
+</tr>
+<tr>
+<td>Detail</td>
+<td>String</td>
+<td>Max 250 characters</td>
+</tr>
+<h3>DATA-018 — Usage_Log</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Timestamp</td>
+<td>String</td>
+<td>YYYY-MM-DD HH:MM:SS</td>
+</tr>
+<tr>
+<td>Module</td>
+<td>String</td>
+<td>Module identifier</td>
+</tr>
+<tr>
+<td>Tokens</td>
+<td>Number</td>
+<td>Total tokens for this AI call</td>
+</tr>
+<tr>
+<td>Cost GBP</td>
+<td>Number</td>
+<td>Estimated cost to 6 decimal places</td>
+</tr>
+<h3>DATA-019 — Social_Queue</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Scheduled Date</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Platform</td>
+<td>String</td>
+<td>Target platform name</td>
+</tr>
+<tr>
+<td>Caption</td>
+<td>String</td>
+<td>Post content</td>
+</tr>
+<tr>
+<td>Image URL</td>
+<td>String</td>
+<td>Optional media URL</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td></code>"pending"<code> or </code>"published"<code></td>
+</tr>
+<h3>DATA-020 — Client_Pulse_Log</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>String</td>
+<td>Client name</td>
+</tr>
+<tr>
+<td>Email</td>
+<td>String</td>
+<td>Client email</td>
+</tr>
+<tr>
+<td>Last Contact</td>
+<td>String</td>
+<td>YYYY-MM-DD</td>
+</tr>
+<tr>
+<td>Days Silence</td>
+<td>Number</td>
+<td>Days since last contact</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>String</td>
+<td>Alert status</td>
+</tr>
+<tr>
+<td>Actioned</td>
+<td>String</td>
+<td></code>""<code> or </code>"Yes"<code></td>
+</tr>
+<h3>DATA-021 — FAQ_Gaps</h3>
+<tr>
+<td>Column</td>
+<td>Type</td>
+<td>Constraint</td>
+</tr>
+<tr>
+<td>Subject</td>
+<td>String</td>
+<td>Email subject, truncated to 120 characters</td>
+</tr>
+<tr>
+<td>Body Preview</td>
+<td>String</td>
+<td>First 200 characters of email body</td>
+</tr>
+<tr>
+<td>From</td>
+<td>String</td>
+<td>Sender email address</td>
+</tr>
+<tr>
+<td>Timestamp</td>
+<td>String</td>
+<td>YYYY-MM-DD HH:MM:SS when logged</td>
+</tr>
+</table>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>6. Configuration Requirements</h2>
+<p>The </code>config.json<code> file is the sole client-specific configuration artefact for a standard deployment. All fields below correspond directly to keys observed in </code>config.example.json<code>.</p>
+<h3>6.1 Top-Level Structure</h3>
+<p><strong>CFG-001</strong> — </code>config.json<code> SHALL be a valid JSON object. Parsing failures SHALL cause </code>load_config()<code> to return </code>{}<code>, which will cause individual modules to fail on first access to missing keys, logged as per-module errors.</p>
+<h3>6.2 AI Provider Configuration</h3>
+<table>
+<tr>
+<th>Type: String</th>
+<th>Required: Yes (for AI features)</th>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: No (free fallback)</td>
+</tr>
+<h3>6.3 Gmail Configuration</h3>
+<tr>
+<td>Type: String</td>
+<td>Required: Yes</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: Yes</td>
+</tr>
+<h3>6.4 Google Sheets Configuration</h3>
+<tr>
+<td>Type: String</td>
+<td>Required: Yes</td>
+</tr>
+<tr>
+<td>Type: Object</td>
+<td>Required: Yes</td>
+</tr>
+<tr>
+<td>Key</td>
+<td>Default Tab Name</td>
+<td>Required By</td>
+</tr>
+<tr>
+<td></code>invoices<code></td>
+<td></code>Invoice_Log<code></td>
+<td>Modules 01, 08, 25, 29, 36</td>
+</tr>
+<tr>
+<td></code>leads<code></td>
+<td></code>Lead_Log<code></td>
+<td>Modules 02, 03, 15, 22, 29</td>
+</tr>
+<tr>
+<td></code>reviews<code></td>
+<td></code>Completed_Jobs<code></td>
+<td>Module 04</td>
+</tr>
+<tr>
+<td></code>contracts<code></td>
+<td></code>Contract_Log<code></td>
+<td>Module 05</td>
+</tr>
+<tr>
+<td></code>faq<code></td>
+<td></code>FAQ_Knowledge_Base<code></td>
+<td>Module 06</td>
+</tr>
+<tr>
+<td></code>appointments<code></td>
+<td></code>Appointments<code></td>
+<td>Modules 10, 12, 25</td>
+</tr>
+<tr>
+<td></code>proposals<code></td>
+<td></code>Proposals<code></td>
+<td>Module 08</td>
+</tr>
+<tr>
+<td></code>pending_documents<code></td>
+<td></code>Pending_Documents<code></td>
+<td>Module 08</td>
+</tr>
+<tr>
+<td></code>clients<code></td>
+<td></code>Clients<code></td>
+<td>Modules 21, 26, 29</td>
+</tr>
+<tr>
+<td></code>social_queue<code></td>
+<td></code>Social_Queue<code></td>
+<td>Module 18</td>
+</tr>
+<tr>
+<td></code>retainer_clients<code></td>
+<td></code>Retainer_Clients<code></td>
+<td>Modules 19, 31</td>
+</tr>
+<tr>
+<td></code>licences<code></td>
+<td></code>Licences<code></td>
+<td>Module 20</td>
+</tr>
+<tr>
+<td></code>timesheets<code></td>
+<td></code>Timesheets<code></td>
+<td>Module 16</td>
+</tr>
+<tr>
+<td></code>chatbot<code></td>
+<td></code>Chatbot_Knowledge<code></td>
+<td>Modules 22, 23, 24</td>
+</tr>
+<tr>
+<td></code>sentinel_actions<code></td>
+<td></code>Sentinel_Actions<code></td>
+<td>Module 27</td>
+</tr>
+<tr>
+<td></code>gazette_hits<code></td>
+<td></code>Gazette_Hits<code></td>
+<td>Module 29</td>
+</tr>
+<tr>
+<td></code>land_leads<code></td>
+<td></code>Land_Registry_Leads<code></td>
+<td>Module 30</td>
+</tr>
+<tr>
+<td></code>macro_log<code></td>
+<td></code>Macro_Log<code></td>
+<td>Module 31</td>
+</tr>
+<tr>
+<td></code>newsletter_queue<code></td>
+<td></code>Newsletter_Queue<code></td>
+<td>Module 32</td>
+</tr>
+<tr>
+<td></code>reviews_log<code></td>
+<td></code>Reviews_Log<code></td>
+<td>Module 33</td>
+</tr>
+<tr>
+<td></code>campaign_log<code></td>
+<td></code>Campaign_Log<code></td>
+<td>Module 34</td>
+</tr>
+<tr>
+<td></code>memory<code></td>
+<td></code>GAOS_Memory<code></td>
+<td>Modules 25, 35</td>
+</tr>
+<tr>
+<td></code>pulse_log<code></td>
+<td></code>Client_Pulse_Log<code></td>
+<td>Module 26</td>
+</tr>
+<tr>
+<td></code>actions_log<code></td>
+<td></code>Actions_Log<code></td>
+<td>All modules (audit)</td>
+</tr>
+<tr>
+<td></code>usage_log<code></td>
+<td></code>Usage_Log<code></td>
+<td>gaos_ai.py, Module 36</td>
+</tr>
+<tr>
+<td></code>faq_gaps<code></td>
+<td></code>FAQ_Gaps<code></td>
+<td>Module 06</td>
+</tr>
+<h3>6.5 Twilio Configuration</h3>
+<tr>
+<td>Type: String</td>
+<td>Required: For SMS/WA/Voice</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For SMS/WA/Voice</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For SMS</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For SMS alerts (Modules 02, 03)</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For WhatsApp</td>
+</tr>
+<h3>6.6 Slack Configuration</h3>
+<tr>
+<td>Type: String</td>
+<td>Required: No</td>
+</tr>
+<h3>6.7 Business Configuration</h3>
+<tr>
+<td>Type: String</td>
+<td>Required: Yes</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For Module 04</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: Should</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For Module 03 SMS</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: No</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: No</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For Module 30</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For Module 28</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: No</td>
+</tr>
+<h3>6.8 Settings</h3>
+<tr>
+<td>Type: Integer</td>
+<td>Required: Yes</td>
+<td>Default: 300</td>
+<td>Minimum: 60</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For Module 01</td>
+<td>Default: </code>"gaos_archive"<code></td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: No</td>
+<td>Default: </code>"gaos_heartbeat.json"<code></td>
+</tr>
+<tr>
+<td>Type: Integer</td>
+<td>Required: No</td>
+<td>Default: 24</td>
+</tr>
+<tr>
+<td>Type: Integer</td>
+<td>Required: No</td>
+<td>Default: 3</td>
+</tr>
+<tr>
+<td>Type: Boolean</td>
+<td>Required: No</td>
+<td>Default: </code>true<code></td>
+</tr>
+<tr>
+<td>Type: Boolean</td>
+<td>Required: No</td>
+<td>Default: </code>true<code></td>
+</tr>
+<h3>6.9 Server Configuration</h3>
+<tr>
+<td>Type: Integer</td>
+<td>Required: For Zone 5</td>
+<td>Default: 8080</td>
+</tr>
+<tr>
+<td>Type: String</td>
+<td>Required: For Module 24 (voice)</td>
+<td>Format: HTTPS URL, e.g. </code>"https://your-gaos-server.up.railway.app"<code></td>
+</tr>
+<h3>6.10 Active Roles</h3>
+<tr>
+<td>Type: Array of Strings</td>
+<td>Required: No</td>
+</tr>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>7. Error Handling Requirements</h2>
+<h3>7.1 Circuit Breaker Specification</h3>
+</table>
+<p><strong>ERR-002</strong> — Circuit breaker thresholds:</p>
+<table>
+<tr>
+<th>Provider</th>
+<th>Failure Threshold</th>
+<th>Cooldown (seconds)</th>
+</tr>
+<tr>
+<td>DeepSeek</td>
+<td>5</td>
+<td>600</td>
+</tr>
+<tr>
+<td>Groq</td>
+<td>5</td>
+<td>300</td>
+</tr>
+</table>
+<p><strong>ERR-004</strong> — A circuit breaker success SHALL be triggered only when a full, parseable response is received from the provider.</p>
+<p><strong>ERR-005</strong> — When a circuit breaker transitions to </code>"open"<code>, a WARNING log entry SHALL be written. When it transitions from </code>"open"<code> or </code>"half-open"<code> to </code>"closed"<code>, an INFO log entry SHALL be written.</p>
+<h3>7.2 Module-Level Retry Policy</h3>
+<p><strong>ERR-006</strong> — The </code>ask_deepseek<code> fallback (direct call, used when </code>gaos_ai<code> is not importable) SHALL retry up to 3 times with exponential backoff: attempt 1 immediately, attempt 2 after 1 second, attempt 3 after 2 seconds.</p>
+<p><strong>ERR-007</strong> — Module action functions SHALL NOT implement their own retry loops for AI calls. Retry logic is the responsibility of </code>gaos_ai.py<code>. Module code SHALL treat a returned empty dict or empty string as a handled failure.</p>
+<p><strong>ERR-008</strong> — Sheets operations (read, append, update) SHALL NOT retry automatically. Transient Sheets API failures will manifest as empty results or silent no-ops in the current poll cycle. The next poll cycle provides implicit retry.</p>
+<h3>7.3 Alert Conditions</h3>
+<p><strong>ERR-009</strong> — The system SHALL alert the owner after </code>settings.alert_after_consecutive_failures<code> (default 3) consecutive poll cycles in which the same module raises an unhandled exception. The alert SHALL be sent via </code>core.gmail_send<code> to </code>gmail.alert_email<code>.</p>
+<p><strong>ERR-010</strong> — The system SHALL log a WARNING when AI failover from DeepSeek to Groq occurs. If </code>settings.ai_failover_alert<code> is </code>true<code>, it SHALL additionally send a notification to the owner.</p>
+<p><strong>ERR-011</strong> — Module 29 (Gazette Monitor) SHALL send an immediate email alert when an insolvency or strike-off match is found. This is not an error condition but an urgent business alert. The alert email SHALL include the matched company name, the matched known contact, and actionable next steps.</p>
+<h3>7.4 Fallback Behaviour</h3>
+<p><strong>ERR-012</strong> — When </code>core.connect_gmail()<code> returns </code>None<code> (e.g. missing </code>credentials.json<code>), modules that depend on Gmail SHALL log an ERROR at startup and exit their </code>run()<code> function. The </code>run_loop<code> will not be entered.</p>
+<p><strong>ERR-013</strong> — When </code>core._get_sheets_client()<code> returns </code>None<code>, all Sheets operations SHALL return empty lists or silently no-op. Modules will behave as if all tabs are empty.</p>
+<p><strong>ERR-014</strong> — When Module 22, 23, or 24 is unavailable (import error), the Flask server SHALL return HTTP 503 for </code>/chat<code> and a TwiML fallback message for </code>/whatsapp<code>, </code>/voice<code>, and </code>/voice/handle<code>. The server SHALL continue serving all other routes.</p>
+<p><strong>ERR-015</strong> — When </code>extract_pdf_text<code> returns </code>""<code> (scanned PDF or pdfplumber failure), Module 01 SHALL mark the email as read, log a WARNING, and return </code>False<code>. No data SHALL be written to Sheets for that email.</p>
+<h3>7.5 Logging Standards</h3>
+<p><strong>ERR-016</strong> — </code>ERROR<code> level SHALL be used for: exceptions that prevent processing of a specific item (email, row, etc.); failed external API calls; missing required configuration.</p>
+<p><strong>ERR-017</strong> — </code>WARNING<code> level SHALL be used for: circuit breaker state changes; unexpected but recoverable data conditions (empty email body, unparseable date); Twilio or Slack skipped due to placeholder config; fallback to secondary AI provider.</p>
+<p><strong>ERR-018</strong> — </code>INFO<code> level SHALL be used for: successful completion of processing steps; scheduled task execution; startup messages.</p>
+<p><strong>ERR-019</strong> — </code>DEBUG<code> level MAY be used for verbose intermediate state during development. DEBUG messages SHALL NOT appear in production logs at the default INFO level.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>8. Security Requirements</h2>
+<h3>8.1 Secret Storage</h3>
+<p><strong>SEC-001</strong> — No API key, OAuth token, auth token, or password SHALL appear in any Python source file, whether as a literal string, constant, or default parameter value.</p>
+<p><strong>SEC-002</strong> — </code>config.json<code> SHALL be listed in </code>.gitignore<code> in the project root. If </code>config.json<code> is detected in version control, it SHALL be considered a security defect.</p>
+<p><strong>SEC-003</strong> — </code>token.json<code>, </code>credentials.json<code>, and </code>service_account.json<code> SHALL be listed in </code>.gitignore<code>. These files SHALL never be committed to version control.</p>
+<p><strong>SEC-004</strong> — In production deployments, all secrets SHALL be injected via environment variables rather than </code>config.json<code>. The following environment variables SHALL be recognised: </code>DEEPSEEK_API_KEY<code>, </code>GROQ_API_KEY<code>. Additional secrets MAY be injected using the dot-path convention (e.g. </code>TWILIO_ACCOUNT_SID<code> for </code>twilio.account_sid<code>).</p>
+<h3>8.2 OAuth Token Lifecycle</h3>
+<p><strong>SEC-005</strong> — The Gmail OAuth2 flow SHALL use the </code>InstalledAppFlow.run_local_server(port=0)<code> method, which opens a random local port for the OAuth callback. This method SHALL only be invoked when no valid </code>token.json<code> exists.</p>
+<p><strong>SEC-006</strong> — </code>token.json<code> SHALL be written using standard Python file I/O (</code>open<code> with </code>"w"<code> mode). It SHALL not be written to any network location.</p>
+<p><strong>SEC-007</strong> — Expired OAuth tokens SHALL be refreshed using </code>credentials.refresh(google.auth.transport.requests.Request())<code>. If the refresh token is expired or revoked, the system SHALL log an ERROR and return </code>None<code> from </code>connect_gmail()<code>. Manual re-authorisation (deletion of </code>token.json<code> and re-run) will be required.</p>
+<p><strong>SEC-008</strong> — The Gmail OAuth scopes SHALL be exactly: </code>["https://www.googleapis.com/auth/gmail.modify", "https://www.googleapis.com/auth/gmail.compose"]<code>. No other Gmail or Google API scopes SHALL be requested.</p>
+<p><strong>SEC-009</strong> — The Google Sheets/Drive OAuth scopes SHALL be exactly: </code>["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]<code>. These are required by the </code>gspread<code> library for read/write access.</p>
+<h3>8.3 API Key Validation</h3>
+<p><strong>SEC-010</strong> — Before registering any AI provider, the </code>_AIManager._build()<code> method SHALL check whether the resolved API key starts with </code>"YOUR_"<code>. Such keys SHALL be treated as absent; the provider SHALL NOT be added to the active list.</p>
+<p><strong>SEC-011</strong> — Before making any Twilio API call, the system SHALL check whether </code>account_sid<code> contains the substring </code>"YOUR_"<code>. If so, the call SHALL be silently skipped and a WARNING logged. This check SHALL be performed inline in each Twilio call site in </code>gaos_core.py<code> and in module code.</p>
+<h3>8.4 HTTP Security</h3>
+<p><strong>SEC-012</strong> — All outbound HTTP requests made by the system SHALL use HTTPS. The </code>requests<code> library's default TLS verification SHALL NOT be disabled (</code>verify=False<code> SHALL NOT appear in any production code).</p>
+<p><strong>SEC-013</strong> — The Flask development server (</code>app.run<code>) SHALL use </code>debug=False<code>. Flask debug mode SHALL NOT be enabled in any deployment.</p>
+<p><strong>SEC-014</strong> — The Flask server does not implement Twilio webhook signature verification in this version. The operator SHOULD restrict Twilio webhook endpoints to Twilio IP ranges at the network/proxy level. Twilio signature verification (using </code>twilio.request_validator.RequestValidator<code>) is a SHOULD requirement for future versions.</p>
+<h3>8.5 Data Handling</h3>
+<p><strong>SEC-015</strong> — Email body content submitted to AI providers SHALL be truncated to the minimum required length for the specific module's task (Module 01: 4,000 chars; Module 02: 2,000 chars; Module 03: 1,500 chars). This reduces personal data exposure in API requests.</p>
+<p><strong>SEC-016</strong> — The </code>detail<code> field written to </code>Actions_Log<code> SHALL be truncated to 250 characters. No full email bodies, attachment content, or credential values SHALL appear in the Actions_Log.</p>
+<p><strong>SEC-017</strong> — Conversation history for Modules 22, 23, and 24 SHALL be stored in process memory only. Conversation history SHALL NOT be written to Google Sheets in full. Only extracted lead details (name, email, interest) from chatbot conversations SHALL be written to </code>Lead_Log<code>.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<h2>9. Deployment Requirements</h2>
+<h3>9.1 Supported Environments</h3>
+<p><strong>DEPLOY-001</strong> — The system SHALL support deployment on Railway.app using the configuration defined in </code>deploy/railway.toml<code>.</p>
+<p><strong>DEPLOY-002</strong> — The system SHALL support deployment on any Linux VPS or cloud instance using the systemd service unit defined in </code>deploy/gaos.service<code>.</p>
+<p><strong>DEPLOY-003</strong> — The system SHALL support Oracle Cloud Always Free tier instances (1 OCPU, 1 GB RAM, Ubuntu 22.04 LTS or later).</p>
+<p><strong>DEPLOY-004</strong> — Local development SHALL be supported on macOS, Windows, and Linux with Python 3.11+ installed.</p>
+<h3>9.2 Resource Minimums</h3>
+<p><strong>DEPLOY-005</strong> — Minimum RAM: 512 MB for a single-role deployment. Recommended: 1 GB for Full Team deployment (34 concurrent processes).</p>
+<p><strong>DEPLOY-006</strong> — Minimum disk: 1 GB for code, dependencies, and PDF archive. The </code>gaos_archive<code> directory size is proportional to invoice volume.</p>
+<p><strong>DEPLOY-007</strong> — Minimum CPU: 1 vCPU. The system is primarily I/O-bound (network calls to APIs). CPU usage should remain below 10% average on a 1 vCPU instance.</p>
+<h3>9.3 Dependency Installation</h3>
+<p><strong>DEPLOY-008</strong> — All Python dependencies SHALL be installable via </code>pip install -r requirements.txt<code> using the pinned versions in </code>requirements.txt<code>. The required packages and their pinned versions are:</p>
+<table>
+<tr>
+<th>Package</th>
+<th>Version</th>
+</tr>
+<tr>
+<td>requests</td>
+<td>2.31.0</td>
+</tr>
+<tr>
+<td>pdfplumber</td>
+<td>0.10.3</td>
+</tr>
+<tr>
+<td>gspread</td>
+<td>6.0.2</td>
+</tr>
+<tr>
+<td>google-auth</td>
+<td>2.29.0</td>
+</tr>
+<tr>
+<td>google-auth-oauthlib</td>
+<td>1.2.0</td>
+</tr>
+<tr>
+<td>google-auth-httplib2</td>
+<td>0.2.0</td>
+</tr>
+<tr>
+<td>google-api-python-client</td>
+<td>2.126.0</td>
+</tr>
+<tr>
+<td>flask</td>
+<td>3.0.2</td>
+</tr>
+<tr>
+<td>gunicorn</td>
+<td>21.2.0</td>
+</tr>
+<tr>
+<td>psutil</td>
+<td>5.9.8</td>
+</tr>
+</table>
+<h3>9.4 Startup Sequence</h3>
+<p><strong>DEPLOY-010</strong> — The required startup sequence for a complete GAOS™ deployment SHALL be:</p>
+<p>1. Install Python dependencies (</code>pip install -r requirements.txt<code>).</p>
+<p>2. Place </code>credentials.json<code> (Google OAuth desktop client) in the project root.</p>
+<p>3. Place </code>service_account.json<code> (Google service account key) in the project root, OR complete the Gmail OAuth flow to generate </code>token.json<code>.</p>
+<p>4. Copy </code>config.example.json<code> to </code>config.json<code> and populate all required fields.</p>
+<p>5. Run </code>python gaos_install.py --pack &lt;industry&gt;<code> to provision the Google Sheets data layer.</p>
+<p>6. Start the polling modules: </code>python gaos_launcher.py &lt;role&gt;<code> or </code>python gaos_launcher.py full_team<code>.</p>
+<p>7. If Zone 5 modules (22, 23, 24) are included in the active tier, start the web server separately: </code>gunicorn gaos_server:app<code> or </code>python gaos_server.py<code>.</p>
+<p>8. Configure Twilio webhook URLs to point to </code>{server.public_url}/whatsapp<code> and </code>{server.public_url}/voice<code>.</p>
+<p><strong>DEPLOY-011</strong> — Steps 6 and 7 SHALL be independent processes. On Railway.app, </code>gaos_server.py<code> is the primary process (start command: </code>gunicorn gaos_server:app<code>). The polling launcher SHALL be started as a separate worker process or service.</p>
+<h3>9.5 Railway.app Configuration</h3>
+<p><strong>DEPLOY-012</strong> — The </code>deploy/railway.toml<code> file SHALL specify: </code>builder = "NIXPACKS"<code>, </code>startCommand = "gunicorn gaos_server:app"<code>, </code>restartPolicyType = "ON_FAILURE"<code>, </code>restartPolicyMaxRetries = 10<code>.</p>
+<p><strong>DEPLOY-013</strong> — On Railway.app, all secrets SHALL be configured as Railway environment variables (not in </code>config.json<code>). The Railway deployment SHALL not contain </code>config.json<code> in version control.</p>
+<p><strong>DEPLOY-014</strong> — Railway.app health checks SHALL target </code>GET /health<code> on the configured public port. The </code>/health<code> endpoint SHALL respond within 2 seconds for the deployment to be considered healthy.</p>
+<h3>9.6 Linux systemd Configuration</h3>
+<p><strong>DEPLOY-015</strong> — The </code>deploy/gaos.service<code> systemd unit file SHALL specify: </code>Type=simple<code>, </code>ExecStart=/usr/bin/python3 gaos_launcher.py full_team<code> (or the appropriate role), </code>Restart=always<code>, </code>RestartSec=10<code>, </code>WorkingDirectory=/home/ubuntu/gaos<code> (or the actual installation path), </code>User=ubuntu<code> (or appropriate non-root user).</p>
+<p><strong>DEPLOY-016</strong> — The systemd service SHALL be enabled to start on boot via </code>systemctl enable gaos<code>.</p>
+<p><strong>DEPLOY-017</strong> — On Oracle Cloud Always Free or Linux VPS deployments, </code>gaos_server.py<code> SHALL be run as a separate systemd service or under a process manager (e.g. </code>supervisor<code>), distinct from the polling launcher service.</p>
+<p><strong>DEPLOY-018</strong> — The deployment user SHALL have read/write access to the project directory, the </code>gaos_archive<code> subdirectory, </code>config.json<code>, </code>token.json<code>, and </code>gaos_heartbeat.json<code>. It SHALL NOT require root privileges.</p>
+<h3>9.7 First-Run Gmail OAuth</h3>
+<p><strong>DEPLOY-019</strong> — On the first run in an environment without a valid </code>token.json<code>, </code>connect_gmail()<code> will attempt to open a browser for OAuth authorisation. In headless server environments, this will fail. The operator SHALL: complete the OAuth flow on a machine with a browser; copy the generated </code>token.json<code> to the server; ensure the server has no write permission to </code>credentials.json<code> (to prevent re-triggering the flow).</p>
+<p><strong>DEPLOY-020</strong> — The generated </code>token.json` contains a refresh token that is valid indefinitely (until manually revoked in the Google Cloud Console). The system will automatically refresh the access token before expiry without requiring re-authorisation.</p>
+<hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+<p></em>End of GAOS™ Low-Level System Requirements — v3.3<em></p>
+<table>
+<tr>
+</tr>
+</table>
+        </div>
+        <div class="footer">
+            <p>© 2026 Aether Frameworks Ltd. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
