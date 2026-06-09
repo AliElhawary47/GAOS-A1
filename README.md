@@ -1,7 +1,9 @@
-# GAOS™ v3.2 — Ghost Assistant Operating System
+# GAOS™ v3.3 — Ghost Assistant Operating System
 ### Aether Frameworks Ltd
 
 A modular business automation platform that watches a client's email, runs AI on what it sees, and executes back-office actions automatically — 24 hours a day, without staff. No per-seat licence. Client owns the system.
+
+**v3.3 adds:** Escalating payment-chase tiers (14/21/30-day, Sent-1/2/3) with early threshold for known late payers, duplicate-send guard on all chasers, AI lead scoring (Hot/Warm/Cold), sequential invoice numbers (INV-YYYYMM-NNN), invoice deduplication and anomaly flagging, FAQ gap logging to `FAQ_Gaps`, reschedule-request detection in appointment reminders, Daily Digest Slack delivery, Slack negative-review alerts, churn-status exclusion in re-engagement mailer, danger-signal cross-referencing in Client Pulse, and GAOS_Memory injection across all Chief of Staff prompts.
 
 **v3.2 adds:** AI provider failover (DeepSeek → Groq free tier), module consolidation (35→34 modules), `run_loop` / `should_run_at` helpers, unified chaser, monthly cost reporting, and industry pack installer.
 
@@ -75,25 +77,25 @@ Each pack includes: pre-populated FAQ knowledge base, licence-expiry seed data, 
 ### Zone 1 — React (email-triggered, every poll)
 | # | Module | What it does |
 |---|--------|-------------|
-| 01 | Invoice Scanner | Extracts data from PDF invoices, logs to Sheets |
-| 02 | Lead Catcher | Detects enquiry emails, drafts reply, pings owner on WhatsApp |
+| 01 | Invoice Scanner | Extracts data from PDF invoices; deduplicates; flags anomalies; logs to Sheets |
+| 02 | Lead Catcher | Detects enquiry emails; scores lead Hot/Warm/Cold; drafts reply; pings owner on WhatsApp |
 | 03 | Urgent Lead Alert | High-value leads → instant SMS to owner |
 | 04 | Review Requester | Sends review link after completed jobs |
 | 05 | Contract Sender | Auto-generates and emails service agreements |
-| 06 | FAQ Auto-Reply | Drafts replies to common questions from knowledge base |
-| 07 | Team Broadcaster | Centralised Slack / email team notifications |
+| 06 | FAQ Auto-Reply | Drafts replies to common questions; logs unanswered gaps to FAQ_Gaps |
+| 07 | Team Broadcaster | Centralised Slack / email team notifications with payment amount extraction |
 
 ### Zone 2 — Chase (condition-driven, every poll)
 | # | Module | Threshold |
 |---|--------|----------|
-| 08 | Unified Item Chaser | Payments (14d) · Proposals (5d) · Documents (3d) |
-| 10 | Appointment Reminder | 24h + 2h before |
+| 08 | Unified Item Chaser | Payments (14/21/30d escalating tiers) · Proposals (5d) · Documents (3d) — early chase for known late payers |
+| 10 | Appointment Reminder | 24h + 2h before; detects client reschedule requests |
 | 12 | No-Show Follow-Up | Day-of missed appointments |
 
 ### Zone 3 — Report (timed)
 | # | Module | Schedule |
 |---|--------|---------|
-| 13 | Daily Digest | Daily 08:00 |
+| 13 | Daily Digest | Daily 08:00 — also delivers to Slack if configured |
 | 14 | Weekly Revenue Snapshot | Monday 08:00 |
 | 15 | Lead Pipeline Report | Friday 17:00 |
 | 16 | Staff Timesheet Summary | Friday 18:00 |
@@ -103,9 +105,9 @@ Each pack includes: pre-populated FAQ knowledge base, licence-expiry seed data, 
 |---|--------|---------|
 | 17 | Birthday & Anniversary Mailer | Daily 09:00 |
 | 18 | Social Post Scheduler | Every poll |
-| 19 | Monthly Invoice Generator | 1st of month 08:00 |
+| 19 | Monthly Invoice Generator | 1st of month 08:00 — sequential invoice numbers (INV-YYYYMM-NNN) |
 | 20 | Licence & Expiry Alert | Daily 09:00 |
-| 21 | Re-Engagement Mailer | Monday 10:00 |
+| 21 | Re-Engagement Mailer | Monday 10:00 — skips churned/inactive/do-not-contact clients |
 
 ### Zone 5 — Converse (Flask server, webhook-driven)
 | # | Module | Description |
@@ -117,8 +119,8 @@ Each pack includes: pre-populated FAQ knowledge base, licence-expiry seed data, 
 ### Zone 6 — Learn (timed)
 | # | Module | Schedule |
 |---|--------|---------|
-| 25 | GAOS Learn | Monday 07:00 — adaptive business memory |
-| 26 | Client Pulse | Monday 07:30 — silence-gap relationship radar |
+| 25 | GAOS Learn | Monday 07:00 — adaptive business memory; learns chase rate and appointment peak time |
+| 26 | Client Pulse | Monday 07:30 — silence-gap radar; cross-references with unpaid invoices for danger signals |
 | 27 | Document Sentinel | Every poll — compliance document watch |
 | 28 | Planning Radar | Monday 08:00 — nearby planning applications |
 
@@ -133,13 +135,13 @@ Each pack includes: pre-populated FAQ knowledge base, licence-expiry seed data, 
 | # | Module | Schedule |
 |---|--------|---------|
 | 32 | Newsletter Mailer | First Monday of month 09:00 |
-| 33 | Review Monitor | Every poll |
+| 33 | Review Monitor | Every poll — negative reviews alert via email, SMS, and Slack |
 | 34 | Campaign Digest | Friday 17:00 |
 
 ### Zone 8 — Chief of Staff
 | # | Module | Schedule |
 |---|--------|---------|
-| 35 | AI Chief of Staff | Daily 07:30 briefing + Monday 07:45 weekly summary |
+| 35 | AI Chief of Staff | Daily 07:30 briefing + Monday 07:45 weekly summary — memory-injected prompts; danger-signal detection |
 
 ### Zone 9 — Utility
 | # | Module | Schedule |
@@ -225,4 +227,4 @@ One line on any website to enable the AI chatbot:
 
 ---
 
-*Aether Frameworks Ltd — GAOS™ v3.2*
+*Aether Frameworks Ltd — GAOS™ v3.3*

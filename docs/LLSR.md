@@ -1,11 +1,11 @@
-# GAOS™ Low-Level System Requirements — v3.2
+# GAOS™ Low-Level System Requirements — v3.3
 
-**Document ID:** GAOS-LLSR-3.2  
+**Document ID:** GAOS-LLSR-3.3  
 **Product:** Ghost Assistant Operating System (GAOS™)  
 **Vendor:** Aether Frameworks Ltd  
 **Status:** Released  
-**Date:** 2026-06-08  
-**Revision:** 1.0  
+**Date:** 2026-06-09  
+**Revision:** 2.0  
 
 ---
 
@@ -27,9 +27,9 @@
 
 ### 1.1 Purpose
 
-This document defines the Low-Level System Requirements (LLSR) for the Ghost Assistant Operating System (GAOS™) version 3.2. It provides precise, implementer-facing specifications for every software component, all 34 functional modules, all external API interfaces, all data schemas, the complete configuration schema, error handling behaviour, security controls, and deployment requirements.
+This document defines the Low-Level System Requirements (LLSR) for the Ghost Assistant Operating System (GAOS™) version 3.3. It provides precise, implementer-facing specifications for every software component, all 34 functional modules, all external API interfaces, all data schemas, the complete configuration schema, error handling behaviour, security controls, and deployment requirements.
 
-This document is the companion to the High-Level System Requirements document (GAOS-HLSR-3.2). Where the HLSR defines *what* the system must do, this document defines *how* each component must behave. A developer SHALL be able to implement, verify, or audit any aspect of the system using only this document and the referenced public API specifications.
+This document is the companion to the High-Level System Requirements document (GAOS-HLSR-3.3). Where the HLSR defines *what* the system must do, this document defines *how* each component must behave. A developer SHALL be able to implement, verify, or audit any aspect of the system using only this document and the referenced public API specifications.
 
 ### 1.2 Scope
 
@@ -287,14 +287,16 @@ All requirements in this document follow the pattern `<TYPE>-<COMPONENT>-<SEQ>`:
 3. If no PDF is found, the module SHALL call `core.gmail_mark_read` and return `False`.
 4. The module SHALL call `core.extract_pdf_text` on the PDF bytes.
 5. If the extracted text is empty (scanned PDF), the module SHALL mark as read and return `False`.
-6. The module SHALL submit the first 4,000 characters of PDF text to the AI via `core.ask_deepseek` requesting JSON with keys `VendorName`, `InvoiceDate` (YYYY-MM-DD), `TotalAmount`, `TaxAmount`.
-7. The module SHALL append a row to `Invoice_Log` containing: VendorName, InvoiceDate, TotalAmount, TaxAmount, sender address, timestamp.
-8. The module SHALL archive the PDF bytes via `core.archive_file` to `settings.archive_folder` with filename `{VendorName}_{original_filename}`.
-9. The module SHALL send an alert email to `gmail.alert_email` summarising the extracted fields.
-10. The module SHALL call `core.gmail_mark_read`.
+6. The module SHALL submit the first 4,000 characters of PDF text to the AI via `core.ask_deepseek` requesting JSON with keys `VendorName`, `InvoiceDate` (YYYY-MM-DD), `TotalAmount`, `TaxAmount`, `InvoiceNumber`.
+7. The module SHALL call `_is_duplicate(cfg, vendor, invoice_date, invoice_number)` which reads Invoice_Log and returns `True` if a row with the same VendorName+InvoiceDate OR the same InvoiceNumber already exists. If duplicate, the module SHALL log a WARNING and return `False` without writing any row.
+8. The module SHALL call `_anomaly_note(cfg, amount_str)` which reads the `invoice_avg` key from GAOS_Memory; if the parsed amount exceeds 2.5× the average, it returns an anomaly warning string; otherwise returns `""`.
+9. The module SHALL append an 8-column row to `Invoice_Log` containing: VendorName, InvoiceDate, TotalAmount, TaxAmount, InvoiceNumber, sender address, timestamp, anomaly note.
+10. The module SHALL archive the PDF bytes via `core.archive_file` to `settings.archive_folder` with filename `{VendorName}_{original_filename}`.
+11. The module SHALL send an alert email to `gmail.alert_email` summarising the extracted fields, including InvoiceNumber and any anomaly note.
+12. The module SHALL call `core.gmail_mark_read`.
 
-**Outputs:** Row in Invoice_Log; archived PDF; alert email to owner  
-**Error Behaviour:** Any per-message exception SHALL be caught, logged as ERROR, and processing SHALL continue with the next message. AI extraction failure SHALL use fallback values `{"VendorName": "Extraction Failed", ...}`.
+**Outputs:** Row in Invoice_Log (8 columns); archived PDF; alert email to owner  
+**Error Behaviour:** Any per-message exception SHALL be caught, logged as ERROR, and processing SHALL continue with the next message. AI extraction failure SHALL use fallback values `{"VendorName": "Extraction Failed", ...}`. Duplicate detection failure SHALL not prevent processing.
 
 ---
 
@@ -307,11 +309,11 @@ All requirements in this document follow the pattern `<TYPE>-<COMPONENT>-<SEQ>`:
 1. The module SHALL immediately apply the Gmail label `"GAOS/Lead"` to the message (before any processing) to prevent Module 03 double-processing.
 2. The module SHALL retrieve message headers and body text.
 3. If body text is empty, the module SHALL mark as read and return `False`.
-4. The module SHALL submit the first 2,000 characters of body text to AI requesting JSON keys: `LeadName`, `LeadEnquiry`, `SuggestedReply`.
+4. The module SHALL submit the first 2,000 characters of body text to AI requesting JSON keys: `LeadName`, `LeadEnquiry`, `SuggestedReply`, `LeadScore` (`"Hot"`, `"Warm"`, or `"Cold"`).
 5. On AI failure, the module SHALL log an ERROR, mark as read, and return `False`.
 6. The module SHALL call `core.gmail_create_draft` with the suggested reply addressed to the sender.
-7. The module SHALL append a row to `Lead_Log`: LeadName, sender email, enquiry summary, status "Draft Ready", timestamp.
-8. If Twilio is configured (account_sid does not contain `"YOUR_"`), the module SHALL send a WhatsApp alert to `twilio.owner_mobile`.
+7. The module SHALL append a row to `Lead_Log`: LeadName, sender email, enquiry summary, LeadScore, timestamp. The `Status` column SHALL store the AI-assigned score (`"Hot"`, `"Warm"`, or `"Cold"`).
+8. If Twilio is configured (account_sid does not contain `"YOUR_"`), the module SHALL send a WhatsApp alert to `twilio.owner_mobile`. For `"Hot"` leads, the message prefix SHALL be `"🔥 HOT LEAD"`; for others it SHALL be `"New lead"`.
 9. The module SHALL call `core.gmail_mark_read`.
 
 **Outputs:** Gmail label; draft reply; Lead_Log row; WhatsApp alert  
@@ -356,14 +358,14 @@ All requirements in this document follow the pattern `<TYPE>-<COMPONENT>-<SEQ>`:
 
 **MOD-06-001** | **ID:** 06 | **Name:** FAQ Auto-Reply | **Zone:** React | **Trigger:** Gmail poll  
 **Schedule/Condition:** Every poll. Searches for unread emails matching FAQ patterns.  
-**Processing:** The module SHALL read all rows from `FAQ_Knowledge_Base`. For each matching unread email, it SHALL submit the question to AI with the knowledge base content and create a draft reply. It SHALL NOT auto-send; drafts are for owner review.
+**Processing:** The module SHALL read all rows from `FAQ_Knowledge_Base`. For each matching unread email, it SHALL submit the question to AI with the knowledge base content and create a draft reply if the confidence threshold is met (≥90%). It SHALL NOT auto-send; drafts are for owner review. When the AI returns `CanAnswer: false`, the module SHALL append a row to the `FAQ_Gaps` tab (default name `"FAQ_Gaps"`, configurable via tab key `faq_gaps`) containing: email subject (truncated to 120 chars), body text (truncated to 200 chars), sender address, and timestamp. This enables the owner to identify recurring unanswered questions and expand the knowledge base.
 
 ---
 
 #### Module 07 — Team Broadcaster
 
 **MOD-07-001** | **ID:** 07 | **Name:** Team Broadcaster | **Zone:** React | **Trigger:** Gmail poll or Sheets condition  
-**Processing:** The module SHALL read broadcast triggers and send notifications to the configured Slack webhook and/or team email addresses. It SHALL use `core.post_to_slack` for Slack delivery.
+**Processing:** The module SHALL read broadcast triggers and send notifications to the configured Slack webhook and/or team email addresses. It SHALL use `core.post_to_slack` for Slack delivery. For payment-related trigger events, the module SHALL apply the regex `r'[£$€]\s*[\d,]+(?:\.\d{2})?'` to the email body and, if a monetary amount is found, SHALL include it in bold in the Slack notification (e.g. `"Payment received — *£1,250.00*"`). If no amount is found, the notification is sent without the amount suffix.
 
 ---
 
@@ -397,14 +399,19 @@ The module SHALL process three named `ChaseConfig` entries in sequence:
 
 For each `ChaseConfig`, the generic engine SHALL:
 1. Read all rows from the tab.
-2. For each row: skip if status is in `done_values`; skip if chase column equals `"sent"` (case-insensitive); skip if email is empty.
-3. Parse the date column value using format `"%Y-%m-%d"` (first 10 characters).
-4. Skip if `datetime.now() - item_date < timedelta(days=chaser.days)`.
-5. Call the appropriate email builder function to construct subject and body.
-6. Send the email via `core.gmail_send`.
-7. Update the chase column cell to `"Sent"` using `core.sheets_update_cell(sheet_id, tab, row_index + 2, chase_col, "Sent")`.
+2. For each row: skip if status is in `done_values`; skip if email is empty.
+3. Parse the date column value using format `"%Y-%m-%d"` (first 10 characters). Skip rows with unparseable dates.
+4. For non-escalating chasers (proposals, documents): skip if chase column equals `"sent"` (case-insensitive) or if days elapsed < `chaser.days`.
+5. For the escalating Payment Chaser: determine the current tier from the `Chase Sent` cell value (`""` or `"no"` → tier 0; `"sent"` or `"sent-1"` → tier 1; `"sent-2"` → tier 2; `"sent-3"` → tier 3). Skip if already at the maximum tier (tier 3). The threshold for the next tier is taken from `escalation_days[current_tier]` (values: 14, 21, 30). For tier-0 rows where the vendor name matches a known late payer from GAOS_Memory, the threshold SHALL be reduced to `min(14, 7) = 7` days.
+6. Before sending any chase email, call `_recently_emailed(gmail, email)` which searches the Gmail sent folder for `to:{email} in:sent newer_than:2d`. If a message was sent to that address in the last 48 hours, skip the row and log an INFO.
+7. For escalating chasers, call `build_payment_email(row, cfg, level=next_tier)` where level 1 is polite, level 2 is firm, level 3 is final notice. Mark the cell `"Sent-{next_tier}"`.
+8. For non-escalating chasers, call the appropriate builder and mark the cell `"Sent"`.
+9. Send the email via `core.gmail_send`.
+10. Update the chase column cell using `core.sheets_update_cell(sheet_id, tab, row_index + 2, chase_col, mark)`.
 
-**Outputs:** Chase emails; updated Sheets cells  
+The `run_all_chasers` function SHALL load the late-payer list from GAOS_Memory once (via `_get_late_payers(cfg)`) and pass it to each `check_and_chase` call.
+
+**Outputs:** Chase emails (Sent-1/Sent-2/Sent-3 for payments; Sent for proposals/documents); updated Sheets cells  
 **Error Behaviour:** Per-chaser exceptions are caught and logged; remaining chasers still execute.
 
 ---
@@ -417,12 +424,13 @@ For each `ChaseConfig`, the generic engine SHALL:
 1. The module SHALL read all rows from `Appointments`.
 2. For each row: parse `Date` (YYYY-MM-DD) and `Time` (HH:MM) into a `datetime` object.
 3. If parse fails, skip the row.
-4. Calculate `hours_until = (appt_dt - datetime.now()).total_seconds() / 3600`.
-5. If `21 <= hours_until <= 25` and the `Reminder Sent` column is blank (24-hour reminder): send SMS and email; update `Reminder Sent`.
-6. If `1 <= hours_until <= 3` and the `2h Sent` equivalent column is blank (2-hour reminder): send SMS and email; update the 2h column.
-7. SMS message format: `"Hi {client}, {prefix} — you have an appointment with {business} at {time_str}. Reply STOP to opt out."`
+4. Before sending any reminder, call `_client_requested_reschedule(gmail, email)` which searches Gmail for `from:{email} newer_than:3d` and scans for reschedule keywords (e.g. "reschedule", "change appointment", "can we move", "different time", "postpone"). If a reschedule request is detected, update the `Status` column to `"Reschedule Requested"` and skip the reminder.
+5. Calculate `hours_until = (appt_dt - datetime.now()).total_seconds() / 3600`.
+6. If `21 <= hours_until <= 25` and the `Reminder Sent` column is blank (24-hour reminder): send SMS and email; update `Reminder Sent`.
+7. If `1 <= hours_until <= 3` and the `2h Sent` equivalent column is blank (2-hour reminder): send SMS and email; update the 2h column.
+8. SMS message format: `"Hi {client}, {prefix} — you have an appointment with {business} at {time_str}. Reply STOP to opt out."`
 
-**Outputs:** Reminder SMS and email; updated Sheets columns
+**Outputs:** Reminder SMS and email; updated Sheets columns; `Status` updated to `"Reschedule Requested"` when detected
 
 ---
 
@@ -445,8 +453,9 @@ For each `ChaseConfig`, the generic engine SHALL:
 2. It SHALL count yesterday's rows by matching the date column against `(datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")`.
 3. It SHALL construct a plain-text summary of the counts and submit to AI with the prompt requesting a 200-word or fewer email body in professional-but-warm tone, referencing the date and key highlights.
 4. It SHALL send the AI-generated digest email to `gmail.alert_email` with subject including the date.
+5. After sending the email, if `slack.webhook_url` is configured and does not contain `"YOUR_"`, it SHALL call `core.post_to_slack` with a message containing the date as a bold header followed by the first 12 lines of the digest body.
 
-**Outputs:** Daily digest email to owner
+**Outputs:** Daily digest email to owner; Slack post (if configured)
 
 ---
 
@@ -490,7 +499,7 @@ For each `ChaseConfig`, the generic engine SHALL:
 
 **MOD-19-001** | **ID:** 19 | **Zone:** Schedule | **Trigger:** Timed  
 **Schedule:** 1st of each month at 08:00 (`core.should_run_at(8, day_of_month=1)`)  
-**Processing:** Reads `Retainer_Clients` tab. For active clients, generates an invoice email based on `Amount` and `Billing Day`, sends to client email, and appends a row to `Invoice_Log`.
+**Processing:** Reads `Retainer_Clients` tab. For active clients, generates an invoice email based on `Amount` and `Billing Day`, sends to client email, and appends a row to `Invoice_Log`. Invoice numbers SHALL use the format `INV-YYYYMM-NNN` where YYYYMM is the current year-month and NNN is a zero-padded sequence starting from where the current month's existing Invoice_Log entries left off (i.e. the module reads Invoice_Log to count rows already prefixed with `INV-{YYYYMM}` and increments from that count). This ensures sequential numbers across manual and automated invoices within the same month.
 
 #### Module 20 — Licence and Expiry Alert
 
@@ -501,7 +510,7 @@ For each `ChaseConfig`, the generic engine SHALL:
 
 **MOD-21-001** | **ID:** 21 | **Zone:** Schedule | **Trigger:** Timed  
 **Schedule:** Every Monday at 10:00 (`core.should_run_at(10, weekday=0)`)  
-**Processing:** Reads `Clients` tab. For clients where `Last Contact` date is more than a configurable number of days in the past (default: business-type dependent), sends a re-engagement email and updates `Last Contact`.
+**Processing:** Reads `Clients` tab. For clients where `Last Contact` date is more than `INACTIVE_DAYS` (default 90) days in the past, sends a re-engagement email and updates the `Re-Engaged` column with the current timestamp. Before sending, the module SHALL check the `Status` column; if the value matches any of: `churned`, `inactive`, `cancelled`, `lost`, `do not contact` (case-insensitive), the row SHALL be skipped silently. Rows where `Re-Engaged` is already set to `"sent"` (case-insensitive) SHALL also be skipped.
 
 ---
 
@@ -554,7 +563,11 @@ For each `ChaseConfig`, the generic engine SHALL:
 
 **MOD-25-001** | **ID:** 25 | **Zone:** Learn | **Trigger:** Timed  
 **Schedule:** Every Monday at 07:00 (`core.should_run_at(7, weekday=0)`)  
-**Processing:** Executes the weekly learning cycle in order: `learn_invoices`, `learn_leads`, `learn_revenue`, `learn_faqs`, `learn_appointments`. Each function reads the relevant tab, computes statistics, and calls `save_memory` to upsert key-value rows in `GAOS_Memory`.
+**Processing:** Executes the weekly learning cycle in order: `learn_invoices`, `learn_leads`, `learn_revenue`, `learn_faqs`, `learn_appointments`, `learn_chase_rate`, and calls `learn_appointment_peak()` from within `learn_appointments`. Each function reads the relevant tab, computes statistics, and calls `save_memory` to upsert key-value rows in `GAOS_Memory`.
+
+`learn_chase_rate(cfg)` SHALL read all Invoice_Log rows, compute the proportion with a non-blank `Chase Sent` value that is not `"no"`, and if this proportion exceeds 40%, save the key `chase_rate` to GAOS_Memory with an advisory such as `"Chase rate is high — X% of invoices required chasing. Review payment terms."`.
+
+`learn_appointment_peak()` (called from `learn_appointments`) SHALL classify each appointment's `Time` column into one of four named slots — morning (before 12:00), lunchtime (12:00–13:59), afternoon (14:00–17:59), evening (18:00 and later) — count appointments per slot, and save the name of the busiest slot to GAOS_Memory as `appointment_peak_time`.
 
 **MOD-25-002** — `save_memory(cfg, key, value)` SHALL read all rows from `GAOS_Memory`, find an existing row with matching `Key`, and update its `Value` cell if found. If not found, it SHALL append a new row `[key, value, timestamp()]`.
 
@@ -568,7 +581,7 @@ For each `ChaseConfig`, the generic engine SHALL:
 
 **MOD-26-001** | **ID:** 26 | **Zone:** Learn | **Trigger:** Timed  
 **Schedule:** Every Monday at 07:30 (`core.should_run_at(7, weekday=0, minute_start=30)`)  
-**Processing:** Reads `Clients` tab. For clients where `Last Contact` is more than 30 days ago, appends to `Client_Pulse_Log` and sends an alert email to the owner listing silent clients.
+**Processing:** Reads `Clients` tab. For clients where `Last Contact` is more than 30 days ago, appends to `Client_Pulse_Log`, saves the at-risk client names to GAOS_Memory as `at_risk_clients`, and sends an alert email to the owner listing silent clients. After identifying at-risk clients, the module SHALL cross-reference them against Invoice_Log: for any at-risk client whose name matches a vendor with an unpaid invoice (Status not in `paid`, `cancelled`, `void`), that client SHALL be added to a `danger` list. If the danger list is non-empty, the module SHALL save a `danger_signals` key to GAOS_Memory with a message of the form `"Double risk: {names} — relationship cooling AND unpaid invoice. Immediate personal contact recommended."`
 
 ---
 
@@ -645,7 +658,14 @@ For each `ChaseConfig`, the generic engine SHALL:
 #### Module 33 — Review Monitor
 
 **MOD-33-001** | **ID:** 33 | **Zone:** Marketer | **Trigger:** Every poll  
-**Processing:** Monitors configured review sources for new reviews. Logs new reviews to `Reviews_Log`. Alerts owner of new reviews via email.
+**Processing:** Monitors Gmail for Google review notification emails (query: `is:unread from:@google.com` with subject containing "New review", "review", or "rated your business"). For each notification:
+1. Attempts to extract star rating using regex patterns from the email snippet and subject.
+2. Attempts to extract reviewer name from the snippet/subject.
+3. Submits to AI to draft an appropriate response (≤60 words for positive, ≤80 words for negative).
+4. Appends a row to `Reviews_Log`: reviewer, stars, snippet (120 chars), response draft, timestamp, status.
+5. For negative reviews (≤3 stars): sends SMS to `twilio.owner_mobile`; sends alert email to `gmail.alert_email` with the draft response; if `slack.webhook_url` is configured and not a placeholder, calls `core.post_to_slack` with a message including the star rating, reviewer name, snippet (150 chars), and a note that a draft response is ready.
+6. For positive reviews: sends an email to `gmail.alert_email` with the draft response for the owner to post.
+7. Marks the Gmail notification as read.
 
 ---
 
@@ -665,9 +685,10 @@ For each `ChaseConfig`, the generic engine SHALL:
 **Schedule:** Daily at 07:30; Monday at 07:45 for weekly summary  
 **Processing:**
 1. The module SHALL define an `IntelItem` dataclass with fields: `category` (urgent/warm/watch/good/info), `role` (which virtual role), `headline` (str), `detail` (str), `score` (float), `action` (str).
-2. At 07:30 daily, the module SHALL read data from all active role data sources, instantiate `IntelItem` objects for each actionable item, sort by score descending, and produce an AI-generated briefing email and WhatsApp message.
-3. At 07:45 on Mondays, it SHALL produce a weekly strategic summary drawing on the same data sources.
-4. `handle_if_cos_query(cfg, sender, message)` SHALL be callable by Module 23. It SHALL detect natural-language queries matching patterns like "what needs my attention", "who owes me money", "how many leads", etc. On a match, it SHALL generate an AI response from the aggregated intelligence and return `(True, reply_text)`. If no pattern matches it SHALL return `(False, None)`.
+2. The `gather_intelligence(cfg)` function SHALL read GAOS_Memory for a `danger_signals` key. If present, it SHALL create an `IntelItem` with `category="urgent"` and `score=85`. If no danger signals exist but `at_risk_clients` is present in GAOS_Memory, it SHALL create a `"watch"` IntelItem with `score=55`.
+3. At 07:30 daily, the module SHALL read data from all active role data sources, instantiate `IntelItem` objects for each actionable item, sort by score descending, construct an AI prompt, call `learn.inject(cfg, prompt)` to prepend the full GAOS_Memory context, submit to AI, and produce a briefing email and WhatsApp message.
+4. At 07:45 on Mondays, it SHALL produce a weekly strategic summary. The weekly-summary AI prompt SHALL also be passed through `learn.inject(cfg, prompt)` before submission.
+5. `handle_if_cos_query(cfg, sender, message)` SHALL be callable by Module 23. It SHALL detect natural-language queries matching patterns including: "what needs my attention", "who owes me money", "how many leads", "double risk", "danger signal". On a match, it SHALL construct an intelligence prompt, pass it through `learn.inject(cfg, prompt)`, generate an AI response, and return `(True, reply_text)`. If no pattern matches it SHALL return `(False, None)`.
 
 ---
 
@@ -815,26 +836,26 @@ All persistent data SHALL be stored in named tabs of a single Google Sheets spre
 
 | Column | Type | Constraint |
 |--------|------|-----------|
-| Invoice ID | String | Optional; auto-populated by AI extraction or module |
-| Client | String | Vendor/supplier name from AI extraction |
-| Client Email | String | Source email address |
-| Amount | String | Currency string, e.g. `"£1,250.00"` |
+| Vendor | String | Vendor/supplier name from AI extraction (replaces legacy `Client`) |
 | Invoice Date | String | YYYY-MM-DD |
+| Amount | String | Currency string, e.g. `"£1,250.00"` (also `TotalAmount`) |
+| Tax | String | Tax amount from AI extraction |
+| Invoice Number | String | AI-extracted invoice reference; used for deduplication |
+| Source Email | String | Sender email address from the PDF attachment email |
+| Timestamp | String | YYYY-MM-DD HH:MM:SS of when the row was written |
+| Notes | String | Anomaly flag (e.g. `"⚠ Amount 3.1× above average"`) or blank |
 | Status | String | Free text; recognised values: `paid`, `cancelled`, `void` |
-| Chase Sent | String | `""` (blank) or `"Sent"` |
-| Notes | String | Optional |
+| Chase Sent | String | `""` or `"no"` → unsent; `"Sent-1"` → first chase sent; `"Sent-2"` → second chase; `"Sent-3"` → final notice |
 
 ### DATA-002 — Lead_Log
 
 | Column | Type | Constraint |
 |--------|------|-----------|
-| Date | String | YYYY-MM-DD HH:MM:SS timestamp |
-| From | String | Lead name or `"there"` |
+| Name | String | AI-extracted lead name or `"there"` |
 | Email | String | Sender email address |
-| Subject | String | AI-extracted enquiry summary |
-| Summary | String | Lead enquiry detail |
-| Status | String | e.g. `"Draft Ready"`, `"Won"`, `"Converted"` |
-| Chase Sent | String | `""` or `"Sent"` |
+| Enquiry | String | AI-extracted enquiry summary |
+| Status | String | AI-assigned score: `"Hot"`, `"Warm"`, or `"Cold"`. May be updated to `"Won"`, `"Converted"` etc. by the owner. |
+| Timestamp | String | YYYY-MM-DD HH:MM:SS |
 
 ### DATA-003 — Completed_Jobs
 
@@ -911,7 +932,9 @@ All persistent data SHALL be stored in named tabs of a single Google Sheets spre
 | Phone | String | Optional mobile number |
 | Type | String | Client category |
 | Last Contact | String | YYYY-MM-DD; used by Modules 21 and 26 |
+| Re-Engaged | String | Timestamp of last re-engagement email, or `"sent"` |
 | Notes | String | Optional |
+| Status | String | Optional. Values recognised by Module 21: `churned`, `inactive`, `cancelled`, `lost`, `do not contact`. Rows with any of these values are excluded from re-engagement emails. |
 
 ### DATA-010 — Retainer_Clients
 
@@ -986,6 +1009,19 @@ All persistent data SHALL be stored in named tabs of a single Google Sheets spre
 | Value | String | Plain-English memory statement |
 | Source | String | Module that wrote this row |
 
+Standard keys written by the learning cycle:
+
+| Key | Written By | Example Value |
+|-----|-----------|--------------|
+| `invoice_avg` | Module 25 `learn_invoices` | `"Average invoice value: £842.50 across 23 invoices"` |
+| `top_vendors` | Module 25 `learn_invoices` | `"Top 3 vendors by invoice volume: ACME Ltd, Buildco, FastParts"` |
+| `late_payers` | Module 25 `learn_invoices` | `"Suppliers with previous late payment chases: ACME Ltd, FastParts"` |
+| `lead_conversion` | Module 25 `learn_leads` | `"Lead conversion rate: 34% (12 won from 35 leads)"` |
+| `appointment_peak_time` | Module 25 `learn_appointments` | `"Busiest appointment slot: morning"` |
+| `chase_rate` | Module 25 `learn_chase_rate` | `"Chase rate is high — 52% of invoices required chasing. Review payment terms."` |
+| `at_risk_clients` | Module 26 | `"Clients with no contact in 30+ days: Acme Corp, Green Solutions Ltd"` |
+| `danger_signals` | Module 26 | `"Double risk: Acme Corp — relationship cooling AND unpaid invoice. Immediate personal contact recommended."` |
+
 ### DATA-017 — Actions_Log
 
 | Column | Type | Constraint |
@@ -1025,6 +1061,17 @@ All persistent data SHALL be stored in named tabs of a single Google Sheets spre
 | Days Silence | Number | Days since last contact |
 | Status | String | Alert status |
 | Actioned | String | `""` or `"Yes"` |
+
+### DATA-021 — FAQ_Gaps
+
+| Column | Type | Constraint |
+|--------|------|-----------|
+| Subject | String | Email subject, truncated to 120 characters |
+| Body Preview | String | First 200 characters of email body |
+| From | String | Sender email address |
+| Timestamp | String | YYYY-MM-DD HH:MM:SS when logged |
+
+This tab is written by Module 06 whenever an incoming email cannot be answered from the FAQ knowledge base. It allows the owner to identify recurring knowledge gaps and add new entries to `FAQ_Knowledge_Base`. The tab is auto-created by Module 06 with these column headers if it does not exist; no manual setup is required.
 
 ---
 
@@ -1081,6 +1128,7 @@ The `config.json` file is the sole client-specific configuration artefact for a 
 | `pulse_log` | `Client_Pulse_Log` | Module 26 |
 | `actions_log` | `Actions_Log` | All modules (audit) |
 | `usage_log` | `Usage_Log` | gaos_ai.py, Module 36 |
+| `faq_gaps` | `FAQ_Gaps` | Module 06 |
 
 ### 6.5 Twilio Configuration
 
@@ -1331,5 +1379,5 @@ The `config.json` file is the sole client-specific configuration artefact for a 
 
 ---
 
-*End of GAOS™ Low-Level System Requirements — v3.2*  
-*Document ID: GAOS-LLSR-3.2 | Aether Frameworks Ltd*
+*End of GAOS™ Low-Level System Requirements — v3.3*  
+*Document ID: GAOS-LLSR-3.3 | Aether Frameworks Ltd*

@@ -1,4 +1,4 @@
-# GAOS™ Setup Guide — v3.2
+# GAOS™ Setup Guide — v3.3
 ### Ghost Assistant Operating System · Aether Frameworks
 ### Follow in order. Allow 30–40 minutes for full setup.
 
@@ -179,7 +179,7 @@ Skip this step if you are only running invoice / lead / contract / FAQ modules.
 
 ## Step 10 — Slack (Optional — team notifications)
 
-Required for: Module 07 (Team Broadcaster).
+Required for: Module 07 (Team Broadcaster). Also used by: Module 13 (Daily Digest), Module 33 (negative review alerts).
 
 1. Go to https://api.slack.com/apps → Create New App → From scratch
 2. Incoming Webhooks → Activate → Add New Webhook to Workspace → pick a channel
@@ -241,7 +241,9 @@ python gaos_launcher.py list
 - **Module 01:** Email a PDF invoice to your watch inbox
 - **Module 02/03:** Email yourself with "enquiry" in the subject
 - **Module 04:** Add a row to `Completed_Jobs` with `Status = Completed`
-- **Module 08:** Add a row to `Invoice_Log` with a date 15+ days ago and Status = unpaid
+- **Module 08:** Add a row to `Invoice_Log` with a date 15+ days ago and Status = unpaid — you should see `Chase Sent` updated to `Sent-1`. After 21+ days it will update to `Sent-2`, then `Sent-3` at 30+ days.
+- **Module 06 FAQ gaps:** Send an email with a question that is not in your FAQ knowledge base — the question will be logged to the `FAQ_Gaps` sheet tab for review.
+- **Module 21:** Add a row to `Clients` with a `Last Contact` date 90+ days ago. Set `Status` to `churned` and confirm the row is skipped; clear Status to confirm the re-engagement email sends.
 
 ---
 
@@ -312,7 +314,9 @@ GAOS/
 | "config.json not found" | Copy `config.example.json` → `config.json` |
 | "Sheet not found" | Check Sheet ID; share with service account? |
 | "Invalid credentials" | Delete `token.json` and run again |
-| "PDF text empty" | Scanned/image PDF — OCR not supported |
+| "PDF text empty" | Scanned/image PDF — OCR not supported; invoice row is skipped and email marked read |
+| "Duplicate invoice skipped" | Module 01 found an existing row with matching vendor+date or invoice number — normal if email was re-forwarded |
+| "Chase not escalating" | Check that `Chase Sent` cell shows `Sent-1` / `Sent-2` not a legacy value — any value other than blank/no/sent-1/sent-2/sent-3 is treated as tier 1 |
 | "DeepSeek errors" | Check API key + balance at deepseek.com. Groq fallback handles this automatically |
 | "Groq failover active" | DeepSeek is down — Groq is covering. Normal. Check deepseek.com status |
 | "Both providers failing" | Check both API keys in config.json |
@@ -320,4 +324,4 @@ GAOS/
 
 ---
 
-*Aether Frameworks Ltd — GAOS™ v3.2*
+*Aether Frameworks Ltd — GAOS™ v3.3*
