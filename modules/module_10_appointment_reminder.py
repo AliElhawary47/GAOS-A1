@@ -18,8 +18,28 @@ import gaos_core as core
 
 log = core.get_logger("appointment_reminder")
 
-COL_24H = 7   # "24h Sent" column (1-based)
-COL_2H  = 8   # "2h Sent"  column (1-based)
+COL_24H    = 7   # "24h Sent" column (1-based)
+COL_2H     = 8   # "2h Sent"  column (1-based)
+COL_STATUS = 6   # "Status"   column (1-based)
+
+RESCHEDULE_KEYWORDS = ("reschedule", "rearrange", "cancel", "can't make",
+                       "cannot make", "unable to attend", "need to move")
+
+
+def _client_requested_reschedule(gmail, email: str) -> bool:
+    """Returns True if the client emailed in the last 72h about rescheduling."""
+    if not email:
+        return False
+    try:
+        query   = f"from:{email} newer_than:3d"
+        results = core.gmail_search(gmail, query, max_results=5)
+        for msg in results:
+            body = core.gmail_get_body_text(core.gmail_get_message(gmail, msg["id"]))
+            if any(kw in body.lower() for kw in RESCHEDULE_KEYWORDS):
+                return True
+    except Exception:
+        pass
+    return False
 
 
 def parse_appt_dt(date_str, time_str):
@@ -80,6 +100,13 @@ def check_appointments(gmail, cfg):
             continue
 
         hours_until = (appt_dt - now).total_seconds() / 3600
+
+        # Check for client reschedule/cancel request before sending any reminder
+        if (sent_24h != "sent" or sent_2h != "sent") and email:
+            if _client_requested_reschedule(gmail, email):
+                log.info(f"Reschedule request detected from {client} — flagging row")
+                core.sheets_update_cell(sheet_id, tab, i + 2, COL_STATUS, "Reschedule Requested")
+                continue
 
         # 24-hour reminder window: between 25h and 23h before
         if 23 <= hours_until <= 25 and sent_24h != "sent":
