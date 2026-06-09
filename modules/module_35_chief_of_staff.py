@@ -82,6 +82,7 @@ COS_QUERY_PATTERNS = [
     r"chief of staff",
     r"what did gaos (do|find|catch|notice)",
     r"(revenue|income|money|cash) (this week|today|this month)",
+    r"(any |show )?(double.?risk|danger.?signal)",
 ]
 
 COS_PATTERN = re.compile("|".join(COS_QUERY_PATTERNS), re.IGNORECASE)
