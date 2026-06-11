@@ -608,14 +608,14 @@ The `run_all_chasers` function SHALL load the late-payer list from GAOS_Memory o
 **Schedule:** Daily at 07:00 (`core.should_run_at(7)`)  
 **Inputs:** London Gazette API; `Invoice_Log` and `Clients` tabs  
 **Processing:**
-1. The module SHALL fetch insolvency notices using `GAZETTE_API` with `notice-type=2700`, `start-publish-date=(today - 1 day)`, `results-page-size=50`, `format=application/json`.
-2. It SHALL fetch strike-off notices using `notice-type=2750` with the same parameters.
-3. It SHALL fetch estate notices using `notice-type=2600`.
-4. For insolvency and strike-off notices, it SHALL call `extract_company_names()` to parse company names from notice records by checking fields `companyName`, `company_name`, `name`, `title`, `subject` and by applying the regex `r'[A-Z][A-Z &\'\-]{2,}\s+(?:LIMITED|LTD|PLC|LLP|PARTNERSHIP)'` on body text.
-5. It SHALL call `cross_reference()` to compare extracted names against vendors in `Invoice_Log` and names in `Clients` using `fuzzy_match()`.
-6. `fuzzy_match(gazette_name, client_name)` SHALL: strip `LIMITED/LTD/PLC/LLP` from both names; return `True` if one contains the other, or if both names share the same first 6 characters (where length > 6).
-7. For estate notices, up to 10 notices SHALL be logged to `Lead_Log` as estate leads.
-8. If any insolvency or strike-off matches are found, the module SHALL send an immediate risk alert email to `gmail.alert_email`.
+1. The module SHALL fetch corporate insolvency notices (winding-up petitions/orders, liquidations, administrations) from `GAZETTE_API` (`https://www.thegazette.co.uk/all-notices/notice/data.json`) with `noticetypes=2450`, `start-publish-date=(today - 1 day)`, `results-page-size=50`, parsing the response's `entry` array. (Companies House strike-off notices are published as unstructured bulk supplements and are not available from the structured feed; the winding-up petition is the earliest structured warning.)
+2. It SHALL fetch estate notices using `noticetypes=2903` with the same parameters.
+3. It SHALL normalise each entry to `{name, content, url, category}` where `name` comes from the entry `title` and `url` from the entry `id` (already a full URI).
+4. For insolvency notices, it SHALL call `extract_company_names()` to collect notice names and to parse additional company names from notice content via the case-sensitive regex `r'[A-Z][A-Z &\'\-]{2,}\s+(?:LIMITED|LTD|PLC|LLP)'`; names shorter than 4 characters SHALL be discarded.
+5. It SHALL call `cross_reference()` to compare extracted names against clients in `Invoice_Log` (column `Client`) and names in `Clients` using `fuzzy_match()`.
+6. `fuzzy_match(gazette_name, client_name)` SHALL: strip `LIMITED/LTD/PLC/LLP` from both names; return `False` when either stripped name is shorter than 4 characters; otherwise return `True` if one contains the other, or if both names share the same first 6 characters (where length > 6).
+7. For estate notices, up to 10 notices SHALL be logged to `Lead_Log` (canonical column order) with Status `"Gazette Estate Lead"`.
+8. If any insolvency matches are found, the module SHALL log each match to the `Gazette_Hits` tab and send an immediate risk alert email to `gmail.alert_email`.
 
 **Outputs:** `Gazette_Hits` tab rows; alert email; `Lead_Log` entries for estate notices
 
@@ -626,7 +626,7 @@ The `run_all_chasers` function SHALL load the late-payer list from GAOS_Memory o
 **MOD-30-001** | **ID:** 30 | **Zone:** Sense | **Trigger:** Timed  
 **Schedule:** Every Monday at 09:00 (`core.should_run_at(9, weekday=0)`)  
 **Processing:**
-1. The module SHALL download the Land Registry Price Paid monthly update from `https://publicdata.landregistry.gov.uk/market-trend-data/price-paid-data/a/pp-monthly-update-new-version.csv`.
+1. The module SHALL download the Land Registry Price Paid monthly update from `https://price-paid-data.publicdata.landregistry.gov.uk/pp-monthly-update-new-version.csv`.
 2. It SHALL parse the CSV (using `csv.reader` on `io.StringIO`) and filter rows by postcode prefix matching `business.postcode`.
 3. For each matching sale, it SHALL compute a renovation potential score: property type score (D=4, S=3, T=3, F=1, O=2) + price bracket score (≥£600k=4, ≥£350k=3, ≥£200k=2, ≥£100k=1, else 0).
 4. It SHALL log the top-scored properties to `Land_Registry_Leads` tab.
@@ -800,7 +800,7 @@ The `run_all_chasers` function SHALL load the late-payer list from GAOS_Memory o
 
 **IFACE-031** — The response JSON structure SHALL be examined for results under keys `results`, `_embedded.notices`, or `notices` (in that order). The module SHALL handle all three structures to account for Gazette API versioning.
 
-**IFACE-032** — Notice type codes: insolvency = `"2700"`, strike-off = `"2750"`, estate = `"2600"`.
+**IFACE-032** — Notice type codes (verified against the live feed): corporate insolvency = `"2450"`, deceased estates = `"2903"`.
 
 ---
 
@@ -1067,11 +1067,11 @@ Standard keys written by the learning cycle:
 | Column | Type | Constraint |
 |--------|------|-----------|
 | Subject | String | Email subject, truncated to 120 characters |
-| Body Preview | String | First 200 characters of email body |
+| Question | String | First 200 characters of email body |
 | From | String | Sender email address |
-| Timestamp | String | YYYY-MM-DD HH:MM:SS when logged |
+| Logged At | String | YYYY-MM-DD HH:MM:SS when logged |
 
-This tab is written by Module 06 whenever an incoming email cannot be answered from the FAQ knowledge base. It allows the owner to identify recurring knowledge gaps and add new entries to `FAQ_Knowledge_Base`. The tab is auto-created by Module 06 with these column headers if it does not exist; no manual setup is required.
+This tab is written by Module 06 whenever an incoming email cannot be answered from the FAQ knowledge base. It allows the owner to identify recurring knowledge gaps and add new entries to `FAQ_Knowledge_Base`. The tab is auto-created by Module 06 with these column headers if it does not exist (and by the installer on every pack install); no manual setup is required.
 
 ---
 
@@ -1227,7 +1227,7 @@ The `config.json` file is the sole client-specific configuration artefact for a 
 
 **ERR-010** — The system SHALL log a WARNING when AI failover from DeepSeek to Groq occurs. If `settings.ai_failover_alert` is `true`, it SHALL additionally send a notification to the owner.
 
-**ERR-011** — Module 29 (Gazette Monitor) SHALL send an immediate email alert when an insolvency or strike-off match is found. This is not an error condition but an urgent business alert. The alert email SHALL include the matched company name, the matched known contact, and actionable next steps.
+**ERR-011** — Module 29 (Gazette Monitor) SHALL send an immediate email alert when an insolvency match is found. This is not an error condition but an urgent business alert. The alert email SHALL include the matched company name, the matched known contact, and actionable next steps.
 
 ### 7.4 Fallback Behaviour
 
@@ -1303,7 +1303,7 @@ The `config.json` file is the sole client-specific configuration artefact for a 
 
 ### 9.1 Supported Environments
 
-**DEPLOY-001** — The system SHALL support deployment on Railway.app using the configuration defined in `deploy/railway.toml`.
+**DEPLOY-001** — The system SHALL support deployment on Railway.app using the configuration defined in `railway.toml` at the repository root.
 
 **DEPLOY-002** — The system SHALL support deployment on any Linux VPS or cloud instance using the systemd service unit defined in `deploy/gaos.service`.
 
@@ -1336,7 +1336,7 @@ The `config.json` file is the sole client-specific configuration artefact for a 
 | gunicorn | 21.2.0 |
 | psutil | 5.9.8 |
 
-**DEPLOY-009** — Python runtime version SHALL be 3.11.x as specified in `deploy/runtime.txt`.
+**DEPLOY-009** — Python runtime version SHALL be 3.11.x as specified in `runtime.txt` at the repository root.
 
 ### 9.4 Startup Sequence
 
@@ -1355,7 +1355,7 @@ The `config.json` file is the sole client-specific configuration artefact for a 
 
 ### 9.5 Railway.app Configuration
 
-**DEPLOY-012** — The `deploy/railway.toml` file SHALL specify: `builder = "NIXPACKS"`, `startCommand = "gunicorn gaos_server:app"`, `restartPolicyType = "ON_FAILURE"`, `restartPolicyMaxRetries = 10`.
+**DEPLOY-012** — The root `railway.toml` file SHALL specify: `builder = "NIXPACKS"`, `startCommand = "gunicorn gaos_server:app"`, `restartPolicyType = "ON_FAILURE"`, `restartPolicyMaxRetries = 10`.
 
 **DEPLOY-013** — On Railway.app, all secrets SHALL be configured as Railway environment variables (not in `config.json`). The Railway deployment SHALL not contain `config.json` in version control.
 

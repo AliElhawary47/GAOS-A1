@@ -1,4 +1,4 @@
-# GAOS™ Pricing Model — v3.2
+# GAOS™ Pricing Model — v3.4
 ### Aether Frameworks Ltd
 
 ---
@@ -21,7 +21,7 @@ Monthly recurring revenue per client. Mix-and-match roles — no forced bundles.
 
 | Bundle | Monthly | Saving |
 |--------|---------|--------|
-| **Full Team** (all roles + voice) | **£999/mo** | **£195/mo vs individual** |
+| **Full Team** (all roles + voice) | **£999/mo** | **£394/mo vs individual** |
 
 ---
 
@@ -101,7 +101,7 @@ Use this in sales conversations to show the value vs. hiring.
 | Part-time receptionist | £1,200/mo | Virtual Receptionist at £299/mo = **£901/mo saved** |
 | Social media manager | £1,500/mo | Virtual Marketer at £199/mo = **£1,301/mo saved** |
 | Business analyst / researcher | £2,000/mo | Virtual Intelligence at £149/mo = **£1,851/mo saved** |
-| **Full team of 5** | **£7,200/mo** | **Full Team at £999/mo = £6,201/mo saved** |
+| **Full team of 6** | **£7,200/mo** | **Full Team at £999/mo = £6,201/mo saved** |
 
 **The Full Team subscription pays for itself if it saves the client 14 hours of staff time per month.**
 
@@ -135,5 +135,5 @@ Groq fallback is free-tier (no cost). Module 36 emails a monthly cost report aut
 
 ---
 
-*Aether Frameworks Ltd — GAOS™ v3.2*
+*Aether Frameworks Ltd — GAOS™ v3.4*
 *Review quarterly as AI provider pricing changes.*

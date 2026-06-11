@@ -1,9 +1,11 @@
-# GAOS™ v3.3 — Ghost Assistant Operating System
+# GAOS™ v3.4 — Ghost Assistant Operating System
 ### Aether Frameworks Ltd
 
 A modular business automation platform that watches a client's email, runs AI on what it sees, and executes back-office actions automatically — 24 hours a day, without staff. No per-seat licence. Client owns the system.
 
 **v3.3 adds:** Escalating payment-chase tiers (14/21/30-day, Sent-1/2/3) with early threshold for known late payers, duplicate-send guard on all chasers, AI lead scoring (Hot/Warm/Cold), sequential invoice numbers (INV-YYYYMM-NNN), invoice deduplication and anomaly flagging, FAQ gap logging to `FAQ_Gaps`, reschedule-request detection in appointment reminders, Daily Digest Slack delivery, Slack negative-review alerts, churn-status exclusion in re-engagement mailer, danger-signal cross-referencing in Client Pulse, and GAOS_Memory injection across all Chief of Staff prompts.
+
+**v3.4 adds:** Unified sheet schemas across all 34 modules (the installer headers are now the single source of truth), send-failure detection (no more lost or duplicate emails/SMS), duplicate-send guards on all mailers, fixed external data feeds (Gazette, Land Registry, BoE, ONS), automatic AI usage logging to `Usage_Log`, AI provider status on `/health`, and core system tabs auto-created by the installer.
 
 **v3.2 adds:** AI provider failover (DeepSeek → Groq free tier), module consolidation (35→34 modules), `run_loop` / `should_run_at` helpers, unified chaser, monthly cost reporting, and industry pack installer.
 
@@ -22,7 +24,7 @@ Six role-based subscription bundles. Mix and match — no forced tiers.
 | **+ AI Voice Agent** | +£99/mo | 24 | Inbound phone handling (add-on) |
 | **Virtual Marketer** | £199/mo | 17 18 21 32 33 34 | Social, newsletter, reviews, re-engagement |
 | **Virtual Intelligence** | £149/mo | 25 26 28 29 30 31 35 | Business memory, market radar, briefings |
-| **Full Team** | **£999/mo** | All 34 modules | Everything — save £195/mo vs individual |
+| **Full Team** | **£999/mo** | All 34 modules | Everything — save £394/mo vs individual |
 
 **Setup fees:** £400 (1 role) · £900 (2–3 roles) · £1,600 (Full Team)
 
@@ -127,7 +129,7 @@ Each pack includes: pre-populated FAQ knowledge base, licence-expiry seed data, 
 ### Zone 0 — Sense (external data)
 | # | Module | Schedule |
 |---|--------|---------|
-| 29 | Gazette Monitor | Daily 07:00 — insolvency / strike-off notices |
+| 29 | Gazette Monitor | Daily 07:00 — insolvency & estate notices |
 | 30 | Land Registry Radar | Monday 09:00 — new property sales = leads |
 | 31 | Rate & Macro Pulse | Daily 12:00 + 1st of month — BoE rate + ONS CPI |
 
@@ -179,25 +181,37 @@ GAOS/
   gaos_core.py           — Shared runtime: Gmail, Sheets, AI, Twilio, scheduling
   gaos_ai.py             — AI Provider Manager: DeepSeek + Groq failover
   gaos_launcher.py       — Role definitions, module registry, CLI entry point
-  gaos_server.py         — Flask server: chatbot, WhatsApp, voice, dashboard
+  gaos_server.py         — Flask server: chatbot, WhatsApp, voice webhooks
   gaos_install.py        — Industry pack installer
   industry_packs.json    — 6 industry configurations (FAQ + licences + contracts)
   config.example.json    — Config template (copy to config.json)
+  contract_template.txt  — Contract template (rewritten by the installer)
   requirements.txt       — Python dependencies
+  Procfile               — Heroku-style process types (web + worker)
+  railway.toml           — Railway config (web server start command)
+  runtime.txt            — Pins python-3.11.9 for cloud builds
 
   modules/
     module_01_invoice_scanner.py  ...  module_36_cost_rollup.py
 
+  static/
+    widget.js              Embeddable chatbot widget served at /widget.js
+
+  tests/
+    test_deployment_readiness.py
+
   deploy/
-    Procfile               Railway / Heroku
-    railway.toml           Railway config
-    gaos.service           systemd service file
+    .env.example           Cloud environment variable template
+    gaos.service           systemd unit — polling launcher (full_team)
+    gaos-web.service       systemd unit — gunicorn web server
     FREE_SERVER_GUIDE.md   Oracle Cloud always-free setup
     CHATBOT_EMBED.md       How to embed the chatbot widget
 
   docs/
     SETUP.md               Step-by-step setup guide (~30 mins)
     PRICING.md             Pricing structure and ROI calculator
+    HLSR.md                High-Level System Requirements
+    LLSR.md                Low-Level System Requirements
 ```
 
 ---
@@ -227,4 +241,4 @@ One line on any website to enable the AI chatbot:
 
 ---
 
-*Aether Frameworks Ltd — GAOS™ v3.3*
+*Aether Frameworks Ltd — GAOS™ v3.4*
