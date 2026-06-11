@@ -5,6 +5,10 @@
 ║                                                             ║
 ║   34 modules across 9 operational zones.                    ║
 ║                                                             ║
+║   BILLING MODEL:                                            ║
+║   - Modules 01-24, 27-28, 32-34 are CUSTOMER-FACING        ║
+║   - Modules 25-26, 29-31, 35-36 are AETHER-INTERNAL        ║
+║                                                             ║
 ║   Run a virtual role:                                       ║
 ║     python gaos_launcher.py admin          # Virtual Admin  ║
 ║     python gaos_launcher.py sales          # Virtual Sales  ║
@@ -119,9 +123,17 @@ MODULE_NAMES = {
     "36": "Cost Rollup Reporter",
 }
 
+# ── MODULE CLASSIFICATION ─────────────────────────────────────
+# Billing model: modules marked as INTERNAL are not charged to customers
+# They are used by Aether Frameworks for platform operations.
+
+INTERNAL_MODULES = {"25", "26", "29", "30", "31", "35", "36"}
+CUSTOMER_MODULES = set(MODULE_FILES.keys()) - INTERNAL_MODULES
+
 # ── ROLE → MODULE MAPPING (Virtual Team model) ────────────────
 # Each role = a monthly subscription bundle.
 # Mix and match. No forced tiers.
+# IMPORTANT: Only CUSTOMER_MODULES are included in roles.
 
 ROLES = {
     "admin": {
@@ -139,7 +151,7 @@ ROLES = {
     "finance": {
         "name":    "Virtual Finance",
         "tagline": "Invoicing, chasing, financial reports",
-        "modules": ["08","13","14","16","19","20","36"],  # 36 = monthly cost report
+        "modules": ["08","13","14","16","19","20"],   # NO module 36 (internal cost tracking)
         "price":   249,
     },
     "receptionist": {
@@ -157,7 +169,7 @@ ROLES = {
     "intelligence": {
         "name":    "Virtual Intelligence",
         "tagline": "Learns your business, reads the world",
-        "modules": ["25","26","28","29","30","31","35"],
+        "modules": ["28"],  # Only 28 is customer-facing. 25,26,29-31,35 are Aether-internal
         "price":   149,
     },
 }
@@ -167,9 +179,14 @@ VOICE_ADDON_MODULE = "24"
 
 FULL_TEAM_ROLES   = list(ROLES.keys())
 FULL_TEAM_PRICE   = 999    # vs £1,393/mo individually (all six roles + £99 voice add-on)
+
+# Full Team includes: all customer modules + all internal modules
+# (Internal modules always run on full_team for Aether's use)
 FULL_TEAM_MODULES = list(dict.fromkeys(
-    [m for r in ROLES.values() for m in r["modules"]] + [VOICE_ADDON_MODULE, "36"]
-))  # de-duped (module 08 appears in admin, sales, and finance; 36 always included)
+    [m for r in ROLES.values() for m in r["modules"]]  # All customer modules from all roles
+    + [VOICE_ADDON_MODULE]                              # Voice add-on
+    + list(INTERNAL_MODULES)                            # All internal modules
+))  # de-duped
 
 SETUP_FEES = {"1 role": 400, "2-3 roles": 900, "Full Team": 1600}
 
@@ -183,19 +200,19 @@ TIERS = {
     "full_team":     FULL_TEAM_MODULES,
 }
 
+# Standalone pricing: only for customer-facing modules
 STANDALONE_PRICES = {
     "01":"£1,200","02":"£750","03":"£600","04":"£600","05":"£1,100",
     "06":"£950","07":"£900","08":"£950","10":"£650",
     "12":"£600","13":"£700","14":"£800","15":"£750",
     "16":"£850","17":"£650","18":"£900","19":"£1,100","20":"£700","21":"£750",
     "22":"£1,400","23":"£1,600","24":"£2,200",
-    "25":"£550","26":"£650","27":"£900","28":"£750","29":"£700",
-    "30":"£750","31":"£600","32":"£850","33":"£700","34":"£600","35":"£1,200",
-    "36":"£350",
+    "27":"£900","28":"£750","32":"£850","33":"£700","34":"£600",
 }
 
 
 def start_module(module_id):
+    """Imports and starts a module's run() function."""
     module = importlib.import_module(MODULE_FILES[module_id])
     module.run()
 
@@ -203,6 +220,7 @@ def start_module(module_id):
 SERVER_MODULES = {"22", "23", "24"}
 
 def launch(module_ids):
+    """Spawns modules as separate processes (except server-based ones)."""
     # Deduplicate (module 08 may appear in multiple roles)
     unique_ids    = list(dict.fromkeys(module_ids))
     server_needed = [m for m in unique_ids if m in SERVER_MODULES]
@@ -213,7 +231,8 @@ def launch(module_ids):
         p = Process(target=start_module, args=(mid,), name=MODULE_NAMES[mid])
         p.start()
         processes.append(p)
-        print(f"  ▶  [{mid}] {MODULE_NAMES[mid]}")
+        module_type = "(INTERNAL)" if mid in INTERNAL_MODULES else ""
+        print(f"  ▶  [{mid}] {MODULE_NAMES[mid]} {module_type}".rstrip())
 
     if server_needed:
         names = ", ".join(f"[{m}] {MODULE_NAMES[m]}" for m in server_needed)
@@ -235,6 +254,7 @@ def launch(module_ids):
 
 
 def list_modules():
+    """Lists all available modules, organized by role."""
     print()
     seen = set()
     for role_key, role in ROLES.items():
@@ -247,9 +267,12 @@ def list_modules():
     print(f"  AI Voice Agent — £99/mo add-on")
     print(f"    [{VOICE_ADDON_MODULE}]  {MODULE_NAMES[VOICE_ADDON_MODULE]}")
     print()
-    print(f"  Full Team — £{FULL_TEAM_PRICE}/mo (all roles + voice)")
+    print(f"  Full Team — £{FULL_TEAM_PRICE}/mo (all customer modules + voice + internal modules)")
     print()
-
+    print(f"  Internal Modules (Aether use only — not billed to customers):")
+    for mid in sorted(INTERNAL_MODULES):
+        print(f"    [{mid}]  {MODULE_NAMES[mid]}")
+    print()
 
 def main():
     print("\n" + "═"*60)
@@ -267,7 +290,7 @@ def main():
         print("    python gaos_launcher.py receptionist   # Virtual Receptionist")
         print("    python gaos_launcher.py marketer       # Virtual Marketer")
         print("    python gaos_launcher.py intelligence   # Virtual Intelligence")
-        print("    python gaos_launcher.py full_team      # Full Team (all roles)")
+        print("    python gaos_launcher.py full_team      # Full Team (all roles + internal)")
         print("    python gaos_launcher.py module 08      # Single module")
         print("    python gaos_launcher.py list           # Show all modules\n")
         return
@@ -281,7 +304,10 @@ def main():
         if mid not in MODULE_FILES:
             print(f"\n  Unknown module: {mid}. Run 'list' to see all.\n")
             return
-        print(f"\n  À la carte — [{mid}] {MODULE_NAMES[mid]} ({STANDALONE_PRICES[mid]})\n")
+        
+        module_type = "INTERNAL" if mid in INTERNAL_MODULES else "CUSTOMER"
+        price_str = f"({STANDALONE_PRICES[mid]})" if mid in STANDALONE_PRICES else "(internal)"
+        print(f"\n  À la carte — [{mid}] {MODULE_NAMES[mid]} {module_type} {price_str}\n")
         launch([mid])
         return
 
@@ -291,9 +317,16 @@ def main():
         return
 
     modules = TIERS[tier]
-    print(f"\n  Launching GAOS™ {tier.upper()} — {len(set(modules))} module(s):\n")
+    customer_count = len([m for m in modules if m not in INTERNAL_MODULES])
+    internal_count = len([m for m in modules if m in INTERNAL_MODULES])
+    
+    print(f"\n  Launching GAOS™ {tier.upper()} — {customer_count} customer module(s)", end="")
+    if internal_count > 0:
+        print(f" + {internal_count} internal module(s)")
+    else:
+        print()
+    print()
     launch(modules)
-
 
 if __name__ == "__main__":
     main()
