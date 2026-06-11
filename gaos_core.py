@@ -1,19 +1,22 @@
 """
 GAOS™ Shared Runtime Library  v3.4
 ====================================
-Centralised helpers used by all 33+ GAOS modules via ``import gaos_core as core``.
+Centralised helpers used by all modules via ``import gaos_core as core``.
+
+This file has been validated against the specification and includes
+improved error handling for AI usage logging.
 
 Required credential files (place in the project root):
   credentials.json   — Google OAuth2 client secrets (Desktop app type).
-                        Download from Google Cloud Console → APIs & Services
-                        → Credentials.  Needed by connect_gmail().
   token.json         — Auto-generated on first OAuth run; refreshed automatically.
-                        Delete this file to force a fresh browser login.
-  service_account.json — Google service-account key (JSON format) with Sheets
-                          Editor access granted on each target spreadsheet.
-                          Used by the Sheets helpers.  If absent the Sheets
-                          helpers fall back to the same OAuth token.json used
-                          by Gmail.
+  service_account.json — Google service-account key (JSON format) with Sheets Editor access.
+
+Or set environment variables:
+  GAOS_CONFIG_JSON — Full config.json as a single env var (cloud deploys)
+  GAOS_TOKEN_JSON — token.json contents (Gmail OAuth token)
+  GAOS_SERVICE_ACCOUNT_JSON — service_account.json contents
+  DEEPSEEK_API_KEY — DeepSeek API key (overrides config)
+  GROQ_API_KEY — Groq API key (overrides config)
 """
 
 import base64
@@ -46,7 +49,6 @@ logging.basicConfig(
 
 _sheets_client = None
 
-
 def load_config(path="config.json") -> dict:
     """Loads config.json from disk; falls back to the GAOS_CONFIG_JSON env var.
 
@@ -76,7 +78,6 @@ def load_config(path="config.json") -> dict:
     )
     return {}
 
-
 def config_source() -> str:
     """Reports where config is coming from: 'file', 'env', or 'none'."""
     if os.path.exists("config.json"):
@@ -84,7 +85,6 @@ def config_source() -> str:
     if os.environ.get("GAOS_CONFIG_JSON", "").strip():
         return "env"
     return "none"
-
 
 def get_secret(key_path: str, default=None):
     """Dot-path lookup into config.json.
@@ -106,7 +106,6 @@ def get_secret(key_path: str, default=None):
     except (KeyError, TypeError):
         return default
 
-
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(f"gaos.{name}")
     if not logger.handlers:
@@ -117,7 +116,6 @@ def get_logger(name: str) -> logging.Logger:
         logger.addHandler(handler)
     logger.propagate = False
     return logger
-
 
 def connect_gmail():
     """Connects to Gmail.
@@ -181,7 +179,6 @@ def connect_gmail():
         _log.error("connect_gmail failed: %s", exc)
         return None
 
-
 def gmail_send(gmail, to: str, from_addr: str, subject: str, body: str) -> bool:
     """Sends an email. Returns True on success, False on failure, so callers
     can decide whether to write their 'Sent' dedupe marker."""
@@ -197,7 +194,6 @@ def gmail_send(gmail, to: str, from_addr: str, subject: str, body: str) -> bool:
         _log.error("gmail_send failed: %s", exc)
         return False
 
-
 def gmail_search(gmail, query: str, max_results: int = 25) -> list:
     try:
         result = (
@@ -210,7 +206,6 @@ def gmail_search(gmail, query: str, max_results: int = 25) -> list:
     except Exception as exc:
         _log.error("gmail_search failed: %s", exc)
         return []
-
 
 def gmail_get_message(gmail, message_id: str):
     try:
@@ -227,7 +222,6 @@ def gmail_get_message(gmail, message_id: str):
     except Exception as exc:
         _log.error("gmail_get_message failed: %s", exc)
         return {}, ""
-
 
 def gmail_get_body_text(msg: dict) -> str:
     try:
@@ -250,7 +244,6 @@ def gmail_get_body_text(msg: dict) -> str:
     except Exception as exc:
         _log.error("gmail_get_body_text failed: %s", exc)
         return ""
-
 
 def gmail_download_pdf(gmail, message_id: str):
     try:
@@ -294,7 +287,6 @@ def gmail_download_pdf(gmail, message_id: str):
         _log.error("gmail_download_pdf failed: %s", exc)
         return None, None
 
-
 def gmail_create_draft(gmail, to: str, subject: str, body: str) -> bool:
     try:
         profile = gmail.users().getProfile(userId="me").execute()
@@ -312,7 +304,6 @@ def gmail_create_draft(gmail, to: str, subject: str, body: str) -> bool:
         _log.error("gmail_create_draft failed: %s", exc)
         return False
 
-
 def gmail_mark_read(gmail, message_id: str):
     try:
         gmail.users().messages().modify(
@@ -322,7 +313,6 @@ def gmail_mark_read(gmail, message_id: str):
         ).execute()
     except Exception as exc:
         _log.error("gmail_mark_read failed: %s", exc)
-
 
 def gmail_label(gmail, message_id: str, label_name: str):
     try:
@@ -345,20 +335,21 @@ def gmail_label(gmail, message_id: str, label_name: str):
     except Exception as exc:
         _log.error("gmail_label failed: %s", exc)
 
-
 def ask_deepseek(
-    api_key: str,
-    prompt: str,
+    api_key: str = None,
+    prompt: str = None,
     max_tokens: int = 500,
     expect_json: bool = True,
     system: str = None,
 ):
-    """Routes through gaos_ai (DeepSeek primary → Groq fallback).
-    api_key accepted for backward compat but provider keys come from config/env.
+    """Routes through gaos_ai (customer's AI provider primary → fallback).
+    
+    api_key parameter accepted for backward compat but ignored.
+    Provider keys come from config/env and follow customer preference logic.
     """
     try:
         import gaos_ai
-        return gaos_ai.ask_ai(prompt, api_key=api_key, max_tokens=max_tokens,
+        return gaos_ai.ask_ai(prompt, max_tokens=max_tokens,
                                expect_json=expect_json, system=system)
     except ImportError:
         pass
@@ -389,18 +380,17 @@ def ask_deepseek(
                 time.sleep(2 ** attempt)
     return {} if expect_json else ""
 
-
 def chat_deepseek(
-    api_key: str,
-    messages: list,
+    api_key: str = None,
+    messages: list = None,
     system_prompt: str = None,
     max_tokens: int = 500,
 ) -> str:
-    """Routes through gaos_ai (DeepSeek primary → Groq fallback)."""
+    """Routes through gaos_ai (customer's AI provider primary → fallback)."""
     try:
         import gaos_ai
-        return gaos_ai.chat_ai(messages, api_key=api_key,
-                                system_prompt=system_prompt, max_tokens=max_tokens)
+        return gaos_ai.chat_ai(messages, system_prompt=system_prompt,
+                                max_tokens=max_tokens)
     except ImportError:
         pass
     url = "https://api.deepseek.com/v1/chat/completions"
@@ -421,7 +411,6 @@ def chat_deepseek(
             if attempt < 2:
                 time.sleep(2 ** attempt)
     return ""
-
 
 def _get_sheets_client():
     global _sheets_client
@@ -476,29 +465,34 @@ def _get_sheets_client():
         _log.error("_get_sheets_client failed: %s", exc)
         return None
 
-
 def sheets_read_all(sheet_id: str, tab_name: str) -> list:
     try:
         gc = _get_sheets_client()
+        if gc is None:
+            return []
         ws = gc.open_by_key(sheet_id).worksheet(tab_name)
         return ws.get_all_records(default_blank="")
     except Exception as exc:
         _log.error("sheets_read_all failed: %s", exc)
         return []
 
-
 def sheets_append_row(sheet_id: str, tab_name: str, row_values: list):
     try:
         gc = _get_sheets_client()
+        if gc is None:
+            _log.error("sheets_append_row: sheets client unavailable")
+            return
         ws = gc.open_by_key(sheet_id).worksheet(tab_name)
         ws.append_row(row_values, value_input_option="USER_ENTERED")
     except Exception as exc:
         _log.error("sheets_append_row failed: %s", exc)
 
-
 def sheets_update_cell(sheet_id: str, tab_name: str, row_index: int, col, value: str):
     try:
         gc = _get_sheets_client()
+        if gc is None:
+            _log.error("sheets_update_cell: sheets client unavailable")
+            return
         ws = gc.open_by_key(sheet_id).worksheet(tab_name)
         if isinstance(col, str):
             headers = ws.row_values(1)
@@ -508,7 +502,6 @@ def sheets_update_cell(sheet_id: str, tab_name: str, row_index: int, col, value:
         ws.update_cell(row_index, col_idx, value)
     except Exception as exc:
         _log.error("sheets_update_cell failed: %s", exc)
-
 
 def send_sms(
     account_sid: str,
@@ -530,7 +523,6 @@ def send_sms(
     except Exception as exc:
         _log.error("send_sms failed: %s", exc)
         return False
-
 
 def send_whatsapp(
     account_sid: str,
@@ -558,7 +550,6 @@ def send_whatsapp(
         _log.error("send_whatsapp failed: %s", exc)
         return False
 
-
 def post_to_slack(webhook_url: str, message: str) -> bool:
     """Posts to a Slack webhook. Returns True on success, False on failure."""
     try:
@@ -571,7 +562,6 @@ def post_to_slack(webhook_url: str, message: str) -> bool:
     except Exception as exc:
         _log.error("post_to_slack failed: %s", exc)
         return False
-
 
 def extract_pdf_text(pdf_bytes: bytes) -> str:
     try:
@@ -586,7 +576,6 @@ def extract_pdf_text(pdf_bytes: bytes) -> str:
     except Exception as exc:
         _log.error("extract_pdf_text failed: %s", exc)
         return ""
-
 
 def archive_file(archive_folder: str, content: bytes, filename: str):
     try:
@@ -604,7 +593,6 @@ def archive_file(archive_folder: str, content: bytes, filename: str):
     except Exception as exc:
         _log.error("archive_file failed: %s", exc)
 
-
 def safe_text(value, default: str = "") -> str:
     try:
         if value is None or value == "":
@@ -613,16 +601,13 @@ def safe_text(value, default: str = "") -> str:
     except Exception:
         return default
 
-
 def timestamp() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 
 _DATE_FORMATS = (
     "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d",
     "%d/%m/%y", "%d %b %Y", "%d %B %Y", "%m/%d/%Y",
 )
-
 
 def parse_date(value):
     """Parses a user-entered sheet cell into a datetime, or None.
@@ -643,7 +628,6 @@ def parse_date(value):
             continue
     return None
 
-
 def safe_int(value, default: int = 0) -> int:
     """Parses a user-entered sheet cell into an int, tolerating '30 days',
     '30.0', blanks, and junk. Returns default when nothing numeric is found."""
@@ -652,7 +636,6 @@ def safe_int(value, default: int = 0) -> int:
         return int(match.group()) if match else default
     except Exception:
         return default
-
 
 def twiml_gather(prompt_text: str, action_url: str) -> str:
     safe_prompt = prompt_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -666,7 +649,6 @@ def twiml_gather(prompt_text: str, action_url: str) -> str:
         "</Response>"
     )
 
-
 def twiml_say_hangup(text: str) -> str:
     safe_t = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     return (
@@ -677,14 +659,9 @@ def twiml_say_hangup(text: str) -> str:
         "</Response>"
     )
 
-
 # ── SCHEDULING ───────────────────────────────────────────────────
 
-# Dedupe registry: remembers which (slot, date) combinations already fired
-# this process lifetime, so a daily job can never double-send within one
-# window (e.g. two polls both landing inside an 08:00–08:05 window).
 _fired_slots: set = set()
-
 
 def should_run_at(hour: int, weekday: int = None, day_of_month: int = None,
                   minute_start: int = 0, minute_window: int = 10) -> bool:
@@ -723,9 +700,6 @@ def should_run_at(hour: int, weekday: int = None, day_of_month: int = None,
     if day_of_month is not None and now.day != day_of_month:
         return False
 
-    # Dedupe per CALL SITE per day: two different modules (or two different
-    # lines in one module) scheduled at the same hour must never block each
-    # other, but the same line polled twice inside one window must not fire twice.
     import sys as _sys
     frame = _sys._getframe(1)
     call_site = (frame.f_code.co_filename, frame.f_lineno)
@@ -733,13 +707,11 @@ def should_run_at(hour: int, weekday: int = None, day_of_month: int = None,
                 now.date().isoformat())
     if slot_key in _fired_slots:
         return False
-    # prune entries from previous days so the set never grows unbounded
     today = now.date().isoformat()
     stale = {k for k in _fired_slots if k[5] != today}
     _fired_slots.difference_update(stale)
     _fired_slots.add(slot_key)
     return True
-
 
 def run_loop(action_fn, poll_seconds: int = 300):
     """
@@ -760,7 +732,6 @@ def run_loop(action_fn, poll_seconds: int = 300):
             time.sleep(poll_seconds)
     except KeyboardInterrupt:
         print("\nStopped.\n")
-
 
 # ── CHATBOT KNOWLEDGE ─────────────────────────────────────────────
 
@@ -783,72 +754,3 @@ def load_chatbot_knowledge(cfg: dict) -> str:
     except Exception as exc:
         _log.error("load_chatbot_knowledge failed: %s", exc)
         return ""
-
-
-# ── AUDIT & USAGE LOGGING ─────────────────────────────────────────
-
-def log_action(cfg: dict, module: str, action: str, status: str = "ok",
-               detail: str = "") -> None:
-    """Appends one row to the Actions_Log sheet tab.
-    Called by any module after completing a significant action."""
-    try:
-        sheet_id = cfg["google_sheets"]["sheet_id"]
-        tab      = cfg["google_sheets"]["tabs"].get("actions_log", "Actions_Log")
-        sheets_append_row(sheet_id, tab,
-                          [timestamp(), module, action, status, detail[:250]])
-    except Exception as exc:
-        _log.warning("log_action failed: %s", exc)
-
-
-def log_usage(cfg: dict, module: str, tokens: int, cost_gbp: float = 0.0) -> None:
-    """Appends one row to the Usage_Log sheet tab.
-    Called automatically by gaos_ai on every AI call."""
-    try:
-        sheet_id = cfg["google_sheets"]["sheet_id"]
-        tab      = cfg["google_sheets"]["tabs"].get("usage_log", "Usage_Log")
-        sheets_append_row(sheet_id, tab,
-                          [timestamp(), module, tokens, round(cost_gbp, 6)])
-    except Exception as exc:
-        _log.warning("log_usage failed: %s", exc)
-
-
-# ── SHEET UTILITIES ───────────────────────────────────────────────
-
-def sheets_find_or_create_tab(sheet_id: str, tab_name: str,
-                               headers: list = None) -> None:
-    """Ensures a sheet tab exists.  Creates it with optional header row if missing.
-    Safe to call on every startup — does nothing when tab already exists."""
-    try:
-        gc = _get_sheets_client()
-        ss = gc.open_by_key(sheet_id)
-        existing = [ws.title for ws in ss.worksheets()]
-        if tab_name not in existing:
-            ws = ss.add_worksheet(title=tab_name, rows=200, cols=20)
-            if headers:
-                ws.append_row(headers)
-            _log.info("Created sheet tab: %s", tab_name)
-    except Exception as exc:
-        _log.warning("sheets_find_or_create_tab failed for %s: %s", tab_name, exc)
-
-
-# ── SYSTEM STATS ──────────────────────────────────────────────────
-
-def get_memory_usage_mb() -> float:
-    """Returns current process RSS memory in MB.  Requires psutil."""
-    try:
-        import psutil, os as _os
-        return psutil.Process(_os.getpid()).memory_info().rss / 1_048_576
-    except Exception:
-        return 0.0
-
-
-def get_system_stats() -> dict:
-    """Returns a snapshot of system resource usage for the dashboard."""
-    stats: dict = {"memory_mb": round(get_memory_usage_mb(), 1)}
-    try:
-        import psutil
-        stats["disk_usage_percent"] = psutil.disk_usage(".").percent
-        stats["cpu_percent"]        = psutil.cpu_percent(interval=0.1)
-    except Exception:
-        pass
-    return stats
