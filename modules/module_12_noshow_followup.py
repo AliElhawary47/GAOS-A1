@@ -7,7 +7,7 @@ GAOS automatically sends a warm, non-confrontational rebooking message
 to the client and logs the follow-up.
 
 Sheet tab required: Appointments
-Columns: Client Name | Mobile | Email | Date | Time | Status | 24h Sent | 2h Sent | Followup Sent
+Columns: Date | Time | Client | Email | Phone | Service | Status | 24h Sent | 2h Sent | No_Show_Sent
 
 Target client: Clinics, salons, personal trainers, consultants.
 Pain solved:   Revenue lost from missed appointments that are never rebooked.
@@ -16,8 +16,6 @@ Pain solved:   Revenue lost from missed appointments that are never rebooked.
 import gaos_core as core
 
 log = core.get_logger("noshow_followup")
-
-FOLLOWUP_COL = 9   # "Followup Sent" column (1-based)
 
 
 def build_followup(client, business_name, booking_link=""):
@@ -43,32 +41,37 @@ def check_noshows(gmail, cfg):
 
     for i, row in enumerate(rows):
         status    = str(row.get("Status",         "")).strip().lower()
-        followup  = str(row.get("Followup Sent",  "")).strip().lower()
-        client    = str(row.get("Client Name",    "")).strip()
-        mobile    = str(row.get("Mobile",         "")).strip()
+        followup  = str(row.get("No_Show_Sent",   "")).strip().lower()
+        client    = str(row.get("Client",         "")).strip()
+        mobile    = str(row.get("Phone",          "")).strip()
         email     = str(row.get("Email",          "")).strip()
 
-        if status != "no-show" or followup == "sent" or (not mobile and not email):
+        if status != "no-show" or followup or (not mobile and not email):
             continue
 
         log.info(f"Sending rebooking message to no-show: {client}")
         body = build_followup(client or "there", cfg["business"]["name"], booking_link)
+
+        delivered = False
 
         # SMS
         tw = cfg["twilio"]
         if mobile and "YOUR_" not in tw["account_sid"]:
             sms_body = (f"Hi {client}, we missed you today at {cfg['business']['name']}! "
                         f"We'd love to rebook you. Reply here or call us.")
-            core.send_sms(tw["account_sid"], tw["auth_token"],
-                          tw["from_number"], mobile, sms_body)
+            if core.send_sms(tw["account_sid"], tw["auth_token"],
+                             tw["from_number"], mobile, sms_body):
+                delivered = True
 
         # Email
         if email:
-            core.gmail_send(gmail, email, cfg["gmail"]["watch_inbox"],
-                            f"We missed you — {cfg['business']['name']}", body)
+            if core.gmail_send(gmail, email, cfg["gmail"]["watch_inbox"],
+                               f"We missed you — {cfg['business']['name']}", body):
+                delivered = True
 
-        core.sheets_update_cell(sheet_id, tab, i + 2, FOLLOWUP_COL, "Sent")
-        sent += 1
+        if delivered:
+            core.sheets_update_cell(sheet_id, tab, i + 2, "No_Show_Sent", "Sent")
+            sent += 1
 
     return sent
 
@@ -78,7 +81,7 @@ def run():
     gmail = core.connect_gmail()
     log.info("module_12_noshow_followup: Watching for no-shows.")
     core.run_loop(lambda: check_noshows(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

@@ -35,9 +35,14 @@ def _end_call(call_sid):
 
 def _store_call(call_sid, history):
     _calls.pop(call_sid, None)
-    _calls[call_sid] = history[-MAX_TURNS:]
+    # Keep MAX_TURNS exchanges (user + assistant entries) so the
+    # max-turn cutoff in handle_turn can actually be reached.
+    _calls[call_sid] = history[-(MAX_TURNS * 2):]
     while len(_calls) > MAX_CALLS:
-        _calls.pop(next(iter(_calls)))
+        try:
+            _calls.pop(next(iter(_calls)), None)
+        except StopIteration:  # racing eviction emptied the dict already
+            break
 
 
 
@@ -59,7 +64,7 @@ def build_system_prompt(cfg, knowledge):
 def greeting(cfg, call_sid):
     """First TwiML when a call connects."""
     business = cfg["business"]["name"]
-    _calls[call_sid] = []
+    _store_call(call_sid, [])   # respects the MAX_CALLS cap
     text = (f"Hello, thank you for calling {business}. "
             f"How can I help you today?")
     base = cfg.get("server", {}).get("public_url", "")
@@ -88,6 +93,16 @@ def handle_turn(cfg, call_sid, caller_number, speech_text):
         system_prompt=build_system_prompt(cfg, knowledge),
         max_tokens=120
     )
+
+    if not reply:
+        # All AI providers down — never leave the caller in silence
+        log.error(f"AI reply failed for call {call_sid} — hanging up politely")
+        send_call_summary(cfg, caller_number, history)
+        _end_call(call_sid)
+        return core.twiml_say_hangup(
+            "I'm sorry, I'm having technical difficulties. "
+            "Someone will call you back shortly. Goodbye."
+        )
 
     history.append({"role": "assistant", "content": reply})
     _store_call(call_sid, history)
@@ -126,10 +141,13 @@ def send_call_summary(cfg, caller_number, history):
                       f"AI ANSWERED A CALL from {caller_number}. "
                       f"Need: {need}. Action: {action}")
 
+    # Canonical Lead_Log order:
+    # [Date, From, Email, Subject, Summary, Status, Chase Sent, Source]
     core.sheets_append_row(
         cfg["google_sheets"]["sheet_id"],
         cfg["google_sheets"]["tabs"].get("leads", "Lead_Log"),
-        [caller_number, caller_number, need, "Voice Call", core.timestamp()]
+        [core.timestamp(), caller_number, "", "Inbound call", need,
+         "Voice Call", "", ""]
     )
     log.info(f"Call summary sent for {caller_number}")
 

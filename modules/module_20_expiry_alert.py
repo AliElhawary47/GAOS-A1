@@ -7,7 +7,7 @@ software licence, vehicle MOT, gas certificate, etc.) is within the
 alert window before expiry, GAOS sends an email alert and marks it.
 
 Sheet tab required: Licences
-Columns: Description | Expiry Date | Alert Days Before | Owner Email | Status | Alerted
+Columns: Description | Expiry Date | Alert Days Before | Status | Last Alerted
 
 Target client: Trades companies, fleet businesses, property managers, any regulated business.
 Pain solved:   Letting a critical licence or insurance lapse through oversight.
@@ -19,7 +19,6 @@ import gaos_core as core
 log = core.get_logger("expiry_alert")
 
 CHECK_HOUR = 9
-ALERT_COL  = 6   # "Alerted" column (1-based)
 
 
 def check_expiries(gmail, cfg):
@@ -31,19 +30,17 @@ def check_expiries(gmail, cfg):
 
     for i, row in enumerate(rows):
         description = str(row.get("Description",      "")).strip()
-        expiry_str  = str(row.get("Expiry Date",      "")).strip()[:10]
-        alert_days  = int(str(row.get("Alert Days Before", "30")).strip() or "30")
-        owner_email = str(row.get("Owner Email",      "")).strip()
+        alert_days  = core.safe_int(row.get("Alert Days Before", 30), 30)
         status      = str(row.get("Status",           "active")).strip().lower()
-        alerted_v   = str(row.get("Alerted",          "")).strip().lower()
+        alerted_v   = str(row.get("Last Alerted",     "")).strip()
 
-        if status in ("expired", "cancelled", "renewed") or alerted_v == "sent":
+        if status in ("expired", "cancelled", "renewed") or alerted_v:
             continue
 
-        try:
-            expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d").date()
-        except ValueError:
+        expiry_dt = core.parse_date(row.get("Expiry Date", ""))
+        if not expiry_dt:
             continue
+        expiry_date = expiry_dt.date()
 
         days_remaining = (expiry_date - today).days
 
@@ -61,13 +58,13 @@ def check_expiries(gmail, cfg):
         else:
             continue
 
-        recipient = owner_email or cfg["gmail"]["alert_email"]
+        recipient = cfg["gmail"]["alert_email"]
         full_body  = f"{body}\n\nAether Frameworks — GAOS™ Expiry Alert"
 
-        core.gmail_send(gmail, recipient, cfg["gmail"]["watch_inbox"], subject, full_body)
-        core.sheets_update_cell(sheet_id, tab, i + 2, ALERT_COL, core.timestamp())
-        log.info(f"Expiry alert sent: {description} ({days_remaining} days left)")
-        alerted += 1
+        if core.gmail_send(gmail, recipient, cfg["gmail"]["watch_inbox"], subject, full_body):
+            core.sheets_update_cell(sheet_id, tab, i + 2, "Last Alerted", core.timestamp())
+            log.info(f"Expiry alert sent: {description} ({days_remaining} days left)")
+            alerted += 1
 
     return alerted
 
@@ -82,7 +79,8 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info(f"Scheduled: daily at {CHECK_HOUR}:00. Ctrl+C to stop.")
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg),
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

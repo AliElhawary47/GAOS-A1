@@ -1,5 +1,5 @@
 [Unit]
-Description=GAOS™ v3.4 — Ghost Assistant Operating System (polling modules)
+Description=GAOS™ v3.4 — Web Server (chatbot, WhatsApp, voice)
 After=network.target
 
 [Service]
@@ -7,7 +7,8 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/gaos
 Environment=GAOS_HEADLESS=1
-ExecStart=/usr/bin/python3 gaos_launcher.py full_team
+Environment=PORT=8080
+ExecStart=/usr/bin/python3 -m gunicorn gaos_server:app --bind 0.0.0.0:8080 --workers 1 --timeout 120
 Restart=always
 RestartSec=10
 

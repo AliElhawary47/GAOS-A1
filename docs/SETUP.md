@@ -1,4 +1,4 @@
-# GAOS™ Setup Guide — v3.3
+# GAOS™ Setup Guide — v3.4
 ### Ghost Assistant Operating System · Aether Frameworks
 ### Follow in order. Allow 30–40 minutes for full setup.
 
@@ -220,6 +220,8 @@ python gaos_launcher.py full_team
 python gaos_launcher.py admin
 python gaos_launcher.py sales
 python gaos_launcher.py finance
+python gaos_launcher.py receptionist
+python gaos_launcher.py marketer
 python gaos_launcher.py intelligence
 ```
 
@@ -273,16 +275,24 @@ Embed the chatbot widget on any website:
 ## Deploying Always-On
 
 ### Option A: Railway.app (recommended, free tier available)
-1. Push the GAOS folder to a GitHub repo
-2. Connect Railway to your repo → it reads `railway.toml` from the repository root
-3. Set environment variables in the Railway dashboard (API keys etc.)
+1. Push the GAOS folder to a GitHub repo (`config.json` is gitignored — it must never be committed)
+2. Connect Railway to your repo → it reads `railway.toml` from the repository root and starts the **web server only** (chatbot / WhatsApp / voice)
+3. Set environment variables in the Railway dashboard (template in `deploy/.env.example`):
+   - `GAOS_CONFIG_JSON` — the full contents of your `config.json` as one line
+   - `GAOS_TOKEN_JSON` — contents of a `token.json` generated locally (run any module once on your PC)
+   - `GAOS_SERVICE_ACCOUNT_JSON` — your Google service-account key for Sheets
+   - `GAOS_HEADLESS=1` — prevents any attempt at interactive browser OAuth
+   - Optional key overrides: `DEEPSEEK_API_KEY`, `GROQ_API_KEY`
+4. **Add a second Railway service for the polling modules.** The default start command runs only the web server. Create another service on the same repo with start command `python gaos_launcher.py full_team` and the same environment variables. (Railway ignores the `worker:` line in the root `Procfile` — that line is for Heroku-style platforms.)
 
 ### Option B: Oracle Cloud Always Free (runs 10+ clients per VM)
 ```bash
-sudo cp deploy/gaos.service /etc/systemd/system/
-sudo systemctl enable gaos
-sudo systemctl start gaos
-sudo journalctl -fu gaos   # watch logs
+sudo cp deploy/gaos.service /etc/systemd/system/       # polling launcher (full_team)
+sudo cp deploy/gaos-web.service /etc/systemd/system/   # chatbot / WhatsApp / voice server
+sudo systemctl enable gaos gaos-web
+sudo systemctl start gaos gaos-web
+sudo journalctl -fu gaos       # watch launcher logs
+sudo journalctl -fu gaos-web   # watch web server logs
 ```
 
 ### Option C: Any Linux VPS with systemd
@@ -324,4 +334,4 @@ GAOS/
 
 ---
 
-*Aether Frameworks Ltd — GAOS™ v3.3*
+*Aether Frameworks Ltd — GAOS™ v3.4*

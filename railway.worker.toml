@@ -1,0 +1,13 @@
+# Railway config for the WORKER service (the 30 polling modules).
+# The root railway.toml runs the gunicorn web server with a /health
+# healthcheck — a worker has no web port, so it needs its own config.
+# In the worker service's settings, set "Config-as-code file path"
+# (railwayConfigFile) to: railway.worker.toml
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python gaos_launcher.py full_team"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

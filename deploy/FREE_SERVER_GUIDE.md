@@ -23,33 +23,39 @@
 1. Go to github.com → sign in (or create free account)
 2. Create a new repository called `gaos`
 3. Upload all files from your `gaos/` folder (drag and drop)
-4. Make sure `config.json` (with your real keys) is included
-   OR use Railway environment variables (see Step 3)
+4. NEVER include `config.json`, `token.json`, or `credentials.json` —
+   they hold your real keys and are gitignored on purpose.
+   Config goes in as environment variables (Step 3).
 
 ### Step 2: Connect to Railway
 1. Go to railway.app → "Start a New Project"
 2. Click "Deploy from GitHub repo"
 3. Select your `gaos` repository
-4. Railway detects the `Procfile` and starts automatically
+4. Railway uses `railway.toml` and starts the web server automatically
 
-### Step 3: Add your config (two options)
+### Step 3: Add your config (environment variables)
+In Railway dashboard → your service → Variables tab, add the variables
+from `deploy/.env.example`:
+- `GAOS_CONFIG_JSON` — the full contents of your config.json, one line
+- `GAOS_TOKEN_JSON`  — contents of a token.json generated locally
+- `GAOS_HEADLESS=1`
+The code already reads these — no modification needed.
 
-**Option A — Upload config.json directly (easiest)**
-Simply make sure `config.json` is in your GitHub repo.
+### Step 4: Add the worker service (the 30 polling modules)
+Railway's start command only runs the **web server** (chatbot, WhatsApp,
+voice). To also run the polling modules, add a second service:
+1. Railway project → "+ New" → "GitHub Repo" → same `gaos` repository
+2. In the new service → Settings → Start Command, set:
+   `python gaos_launcher.py full_team`
+3. Copy the same Variables onto this service
+(Use `admin`, `sales`, `finance`, `receptionist`, `marketer`,
+`intelligence`, or `module 08` instead of `full_team` to run a subset.)
 
-**Option B — Use Railway Variables (more secure)**
-In Railway dashboard → your project → Variables tab:
-- Add each key from config.json as an environment variable
-- Then modify `gaos_core.py` to read from `os.environ` for sensitive keys
-
-### Step 4: Watch it run
-- Railway dashboard shows live logs
+### Step 5: Watch it run
+- Railway dashboard shows live logs for both services
 - You will see each module starting up
-- Accessible from your iPad browser at any time
-
-### Changing the tier
-In Railway → Settings → Start Command:
-Change `enterprise` to `core`, `pro`, or `module 01` etc.
+- Visit `https://your-app.up.railway.app/health` to confirm the web
+  server is live
 
 ---
 
@@ -102,44 +108,31 @@ nano config.json
 # Paste in your filled config.json content, save with Ctrl+X
 ```
 
-### Step 4: Run GAOS as a background service (systemd)
-This makes GAOS start automatically when the server reboots.
+### Step 4: Run GAOS as background services (systemd)
+GAOS is two processes: the **launcher** (30 polling modules) and the
+**web server** (chatbot, WhatsApp, voice). Ready-made unit files ship in
+the repo's `deploy/` folder — install both so the whole product runs and
+survives reboots:
 
 ```bash
-# Create a systemd service file
-sudo nano /etc/systemd/system/gaos.service
-```
+# Install both unit files (edit User/WorkingDirectory if yours differ)
+sudo cp deploy/gaos.service deploy/gaos-web.service /etc/systemd/system/
 
-Paste this:
-```ini
-[Unit]
-Description=GAOS Ghost Assistant Operating System
-After=network.target
-
-[Service]
-Type=simple
-User=ubuntu
-WorkingDirectory=/home/ubuntu/gaos
-ExecStart=/usr/bin/python3 gaos_launcher.py enterprise
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-# Enable and start
+# Enable and start both
 sudo systemctl daemon-reload
-sudo systemctl enable gaos
-sudo systemctl start gaos
+sudo systemctl enable --now gaos gaos-web
 
-# Check it is running
-sudo systemctl status gaos
+# Check they are running
+sudo systemctl status gaos gaos-web
 
 # Watch live logs
 sudo journalctl -fu gaos
+sudo journalctl -fu gaos-web
 ```
+
+To run a single role instead of the full team, edit `ExecStart` in
+`gaos.service` and replace `full_team` with `admin`, `sales`, `finance`,
+`receptionist`, `marketer`, `intelligence`, or `module 08`.
 
 ### Managing multiple clients on Oracle
 Each client gets their own folder and systemd service:
@@ -175,4 +168,4 @@ since GAOS is extremely lightweight (mostly sleeping between polls).
 
 ---
 
-*Aether Frameworks — GAOS™ v2.0*
+*Aether Frameworks — GAOS™ v3.4*

@@ -1,6 +1,6 @@
 """
 ╔══════════════════════════════════════════════════════════════╗
-║   GAOS™ LAUNCHER v3.2                                       ║
+║   GAOS™ LAUNCHER v3.4                                       ║
 ║   Aether Frameworks                                         ║
 ║                                                             ║
 ║   34 modules across 9 operational zones.                    ║
@@ -166,7 +166,7 @@ ROLES = {
 VOICE_ADDON_MODULE = "24"
 
 FULL_TEAM_ROLES   = list(ROLES.keys())
-FULL_TEAM_PRICE   = 999    # vs £1,194 individually
+FULL_TEAM_PRICE   = 999    # vs £1,393/mo individually (all six roles + £99 voice add-on)
 FULL_TEAM_MODULES = list(dict.fromkeys(
     [m for r in ROLES.values() for m in r["modules"]] + [VOICE_ADDON_MODULE, "36"]
 ))  # de-duped (module 08 appears in admin, sales, and finance; 36 always included)
@@ -253,7 +253,7 @@ def list_modules():
 
 def main():
     print("\n" + "═"*60)
-    print("  GAOS™ v3.2 — Ghost Assistant Operating System")
+    print("  GAOS™ v3.4 — Ghost Assistant Operating System")
     print("  Aether Frameworks — 34 Modules | 6 Virtual Roles")
     print("═"*60)
 

@@ -2,7 +2,24 @@
   "trades": {
     "name": "Trades & Construction",
     "description": "For plumbers, electricians, builders, roofers, HVAC engineers, and general contractors. Manages job-based workflows, material quotes, compliance certificates, and trade-specific lead sources.",
-    "modules": ["01", "02", "03", "04", "05", "08", "09", "10", "12", "13", "14", "15", "19", "20", "22", "23", "33"],
+    "modules": [
+      "01",
+      "02",
+      "03",
+      "04",
+      "05",
+      "08",
+      "10",
+      "12",
+      "13",
+      "14",
+      "15",
+      "19",
+      "20",
+      "22",
+      "23",
+      "33"
+    ],
     "sheet_tabs": {
       "invoices": "Invoice_Log",
       "leads": "Lead_Log",
@@ -22,40 +39,129 @@
       "certificates": "Compliance_Certificates"
     },
     "faq_knowledge": [
-      {"Question": "Do you offer emergency call-outs?", "Answer": "Yes, we offer 24/7 emergency call-outs for urgent issues. Our emergency line is always available. Call-out fees apply depending on time and distance."},
-      {"Question": "Are you Gas Safe registered?", "Answer": "Yes, all our gas engineers are Gas Safe registered. We can provide our registration number on request, and our engineers carry their Gas Safe ID cards at all times."},
-      {"Question": "Do you provide written quotes?", "Answer": "Absolutely. We provide free, no-obligation written quotes for all jobs. Large projects may require a site visit before quoting."},
-      {"Question": "What areas do you cover?", "Answer": "We cover a 25-mile radius from our base. For larger projects, we may travel further - please contact us to discuss."},
-      {"Question": "Do you offer a guarantee on your work?", "Answer": "All our workmanship comes with a 12-month guarantee. Materials are covered by the manufacturer's warranty, typically 2-10 years depending on the product."},
-      {"Question": "Can you work evenings or weekends?", "Answer": "Yes, we offer flexible scheduling including evenings and Saturdays at no extra cost. Sunday work incurs a small surcharge."},
-      {"Question": "Do you charge for travel time?", "Answer": "No, we do not charge for travel time within our standard service area. A mileage charge applies only for distances beyond 25 miles."},
-      {"Question": "How quickly can you start a job?", "Answer": "For urgent repairs, we can often attend same-day or next-day. For planned work, our current lead time is typically 1-2 weeks depending on the scope."},
-      {"Question": "Do you take card payments?", "Answer": "Yes, we accept all major credit and debit cards, bank transfers, and cash. Payment is due on completion unless otherwise agreed in writing."},
-      {"Question": "Are you insured?", "Answer": "Yes, we hold full public liability insurance (GBP 5 million) and employer's liability insurance. Certificates available on request."},
-      {"Question": "Do I need to be home during the work?", "Answer": "Not necessarily. Many of our clients provide keys or arrange access. We are happy to work unattended properties with prior arrangement."},
-      {"Question": "What happens if something goes wrong after the job?", "Answer": "Contact us immediately. If it's related to our work, we'll return to fix it at no charge within our guarantee period. We aim to respond within 24 hours."},
-      {"Question": "Can you source materials or should I buy them?", "Answer": "We can source all materials at trade prices, often cheaper than retail. We'll provide a breakdown in your quote. Alternatively, you're welcome to supply your own materials."},
-      {"Question": "Do you do commercial work or just domestic?", "Answer": "We handle both domestic and commercial projects. Our team has experience with offices, retail spaces, restaurants, and rental properties."},
-      {"Question": "How do I leave a review?", "Answer": "We appreciate your feedback! You can leave a review on our Google Business page. We'll send you a link after the job is completed."}
+      {
+        "Question": "Do you offer emergency call-outs?",
+        "Answer": "Yes, we offer 24/7 emergency call-outs for urgent issues. Our emergency line is always available. Call-out fees apply depending on time and distance."
+      },
+      {
+        "Question": "Are you Gas Safe registered?",
+        "Answer": "Yes, all our gas engineers are Gas Safe registered. We can provide our registration number on request, and our engineers carry their Gas Safe ID cards at all times."
+      },
+      {
+        "Question": "Do you provide written quotes?",
+        "Answer": "Absolutely. We provide free, no-obligation written quotes for all jobs. Large projects may require a site visit before quoting."
+      },
+      {
+        "Question": "What areas do you cover?",
+        "Answer": "We cover a 25-mile radius from our base. For larger projects, we may travel further - please contact us to discuss."
+      },
+      {
+        "Question": "Do you offer a guarantee on your work?",
+        "Answer": "All our workmanship comes with a 12-month guarantee. Materials are covered by the manufacturer's warranty, typically 2-10 years depending on the product."
+      },
+      {
+        "Question": "Can you work evenings or weekends?",
+        "Answer": "Yes, we offer flexible scheduling including evenings and Saturdays at no extra cost. Sunday work incurs a small surcharge."
+      },
+      {
+        "Question": "Do you charge for travel time?",
+        "Answer": "No, we do not charge for travel time within our standard service area. A mileage charge applies only for distances beyond 25 miles."
+      },
+      {
+        "Question": "How quickly can you start a job?",
+        "Answer": "For urgent repairs, we can often attend same-day or next-day. For planned work, our current lead time is typically 1-2 weeks depending on the scope."
+      },
+      {
+        "Question": "Do you take card payments?",
+        "Answer": "Yes, we accept all major credit and debit cards, bank transfers, and cash. Payment is due on completion unless otherwise agreed in writing."
+      },
+      {
+        "Question": "Are you insured?",
+        "Answer": "Yes, we hold full public liability insurance (GBP 5 million) and employer's liability insurance. Certificates available on request."
+      },
+      {
+        "Question": "Do I need to be home during the work?",
+        "Answer": "Not necessarily. Many of our clients provide keys or arrange access. We are happy to work unattended properties with prior arrangement."
+      },
+      {
+        "Question": "What happens if something goes wrong after the job?",
+        "Answer": "Contact us immediately. If it's related to our work, we'll return to fix it at no charge within our guarantee period. We aim to respond within 24 hours."
+      },
+      {
+        "Question": "Can you source materials or should I buy them?",
+        "Answer": "We can source all materials at trade prices, often cheaper than retail. We'll provide a breakdown in your quote. Alternatively, you're welcome to supply your own materials."
+      },
+      {
+        "Question": "Do you do commercial work or just domestic?",
+        "Answer": "We handle both domestic and commercial projects. Our team has experience with offices, retail spaces, restaurants, and rental properties."
+      },
+      {
+        "Question": "How do I leave a review?",
+        "Answer": "We appreciate your feedback! You can leave a review on our Google Business page. We'll send you a link after the job is completed."
+      }
     ],
     "licence_items": [
-      {"Description": "Gas Safe Registration", "Alert Days Before": 30},
-      {"Description": "Public Liability Insurance", "Alert Days Before": 30},
-      {"Description": "Employer's Liability Insurance", "Alert Days Before": 30},
-      {"Description": "NICEIC Certification (Electrical)", "Alert Days Before": 30},
-      {"Description": "CSCS Cards (Staff)", "Alert Days Before": 30},
-      {"Description": "Vehicle Insurance - Van 1", "Alert Days Before": 14},
-      {"Description": "Vehicle Insurance - Van 2", "Alert Days Before": 14},
-      {"Description": "Tool Insurance", "Alert Days Before": 14},
-      {"Description": "Waste Carrier Licence", "Alert Days Before": 30},
-      {"Description": "WaterSafe Accreditation", "Alert Days Before": 30}
+      {
+        "Description": "Gas Safe Registration",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Public Liability Insurance",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Employer's Liability Insurance",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "NICEIC Certification (Electrical)",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "CSCS Cards (Staff)",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Vehicle Insurance - Van 1",
+        "Alert Days Before": 14
+      },
+      {
+        "Description": "Vehicle Insurance - Van 2",
+        "Alert Days Before": 14
+      },
+      {
+        "Description": "Tool Insurance",
+        "Alert Days Before": 14
+      },
+      {
+        "Description": "Waste Carrier Licence",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "WaterSafe Accreditation",
+        "Alert Days Before": 30
+      }
     ],
     "contract_template": "TRADES SERVICE AGREEMENT\n\nDate: {Date}\n\nBetween: {CompanyName} (the 'Contractor')\nAnd: {ClientName} (the 'Client')\n\n1. SCOPE OF WORK\nThe Contractor agrees to carry out the following works:\n{ServiceDescription}\n\n2. FEE\nThe agreed fee for these works is {Fee}.\n\n   - Materials: [as quoted / to be confirmed]\n   - Labour: Included in the above fee\n   - VAT: [Included / Excluded at 20%]\n\n3. PAYMENT TERMS\n   - Deposit: [X]% on acceptance of this agreement\n   - Balance: On satisfactory completion of works\n   - Payment method: Bank transfer / Card / Cash\n\n4. TIMELINE\nEstimated start date: {StartDate}\nEstimated completion: {EndDate}\n\n5. WARRANTIES\nThe Contractor warrants that all work will be carried out with reasonable care and skill, in accordance with applicable building regulations and industry standards.\n\n6. INSURANCE\nThe Contractor holds Public Liability Insurance to the value of GBP 5,000,000.\n\n7. CANCELLATION\nEither party may cancel this agreement with 48 hours' written notice. Deposits are non-refundable within 48 hours of the start date.\n\n8. GOVERNING LAW\nThis agreement is governed by the laws of England and Wales.\n\nSigned: ______________________   Date: ____________\n{CompanyName}\n\nSigned: ______________________   Date: ____________\n{ClientName}"
   },
   "legal": {
     "name": "Legal & Professional Services",
     "description": "For solicitors, conveyancers, paralegals, and legal practices. Manages case workflows, document deadlines, compliance requirements, and client matter tracking.",
-    "modules": ["01", "02", "05", "06", "08", "10", "11", "13", "14", "20", "22", "23", "27", "28"],
+    "modules": [
+      "01",
+      "02",
+      "05",
+      "06",
+      "08",
+      "10",
+      "13",
+      "14",
+      "20",
+      "22",
+      "23",
+      "27",
+      "28"
+    ],
     "sheet_tabs": {
       "invoices": "Invoice_Log",
       "leads": "Lead_Log",
@@ -74,25 +180,66 @@
       "deadlines": "Deadline_Tracker"
     },
     "faq_knowledge": [
-      {"Question": "What areas of law do you specialise in?", "Answer": "We specialise in conveyancing, family law, wills and probate, and commercial contracts. We can refer you to trusted partners for other specialisms."},
-      {"Question": "How much will it cost?", "Answer": "We offer both fixed-fee and hourly-rate arrangements depending on the matter. We'll provide a clear written estimate before commencing any work."},
-      {"Question": "How long will my case take?", "Answer": "Timeframes vary by matter type. We'll give you a realistic estimate at your initial consultation and keep you updated throughout."},
-      {"Question": "Will my matter be confidential?", "Answer": "Absolutely. All communications are protected by legal professional privilege and our strict confidentiality policies."},
-      {"Question": "What do I need to bring to the first meeting?", "Answer": "Please bring photographic ID, proof of address, and any relevant documents related to your matter. We'll confirm specifics when we schedule."}
+      {
+        "Question": "What areas of law do you specialise in?",
+        "Answer": "We specialise in conveyancing, family law, wills and probate, and commercial contracts. We can refer you to trusted partners for other specialisms."
+      },
+      {
+        "Question": "How much will it cost?",
+        "Answer": "We offer both fixed-fee and hourly-rate arrangements depending on the matter. We'll provide a clear written estimate before commencing any work."
+      },
+      {
+        "Question": "How long will my case take?",
+        "Answer": "Timeframes vary by matter type. We'll give you a realistic estimate at your initial consultation and keep you updated throughout."
+      },
+      {
+        "Question": "Will my matter be confidential?",
+        "Answer": "Absolutely. All communications are protected by legal professional privilege and our strict confidentiality policies."
+      },
+      {
+        "Question": "What do I need to bring to the first meeting?",
+        "Answer": "Please bring photographic ID, proof of address, and any relevant documents related to your matter. We'll confirm specifics when we schedule."
+      }
     ],
     "licence_items": [
-      {"Description": "SRA Practising Certificate", "Alert Days Before": 60},
-      {"Description": "Professional Indemnity Insurance", "Alert Days Before": 30},
-      {"Description": "AML Registration", "Alert Days Before": 30},
-      {"Description": "Data Protection Registration (ICO)", "Alert Days Before": 30},
-      {"Description": "Office Premises Insurance", "Alert Days Before": 30}
+      {
+        "Description": "SRA Practising Certificate",
+        "Alert Days Before": 60
+      },
+      {
+        "Description": "Professional Indemnity Insurance",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "AML Registration",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Data Protection Registration (ICO)",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Office Premises Insurance",
+        "Alert Days Before": 30
+      }
     ],
     "contract_template": "LEGAL SERVICES RETAINER\n\nDate: {Date}\n\nBetween: {CompanyName} (the 'Firm')\nAnd: {ClientName} (the 'Client')\n\n1. SERVICES\nThe Firm agrees to provide legal services in respect of:\n{ServiceDescription}\n\n2. FEE ARRANGEMENT\nThe agreed fee is {Fee}.\n\n3. TERMS\nThis engagement is governed by our standard terms of business, a copy of which has been provided.\nThis agreement is governed by the laws of England and Wales.\n\nSigned: ______________________   Date: ____________\n{CompanyName}"
   },
   "clinic": {
     "name": "Medical & Dental Clinic",
     "description": "For GP practices, dental surgeries, physio clinics, and private healthcare providers. Manages patient appointments, recall reminders, compliance, and treatment plans.",
-    "modules": ["02", "04", "06", "10", "12", "13", "17", "20", "22", "23"],
+    "modules": [
+      "02",
+      "04",
+      "06",
+      "10",
+      "12",
+      "13",
+      "17",
+      "20",
+      "22",
+      "23"
+    ],
     "sheet_tabs": {
       "invoices": "Invoice_Log",
       "leads": "Lead_Log",
@@ -107,27 +254,71 @@
       "licences": "Licences",
       "timesheets": "Timesheets",
       "chatbot": "Chatbot_Knowledge",
-      "recalls": "Patient_Recalls"
+      "recalls": "Recall_Queue"
     },
     "faq_knowledge": [
-      {"Question": "Do I need a referral to book an appointment?", "Answer": "For private appointments, no referral is needed. For NHS services, please check with your GP first."},
-      {"Question": "What should I bring to my first appointment?", "Answer": "Please bring a list of current medications, your insurance details if applicable, and any relevant medical records or test results."},
-      {"Question": "What is your cancellation policy?", "Answer": "We require 24 hours' notice for cancellations. Late cancellations may incur a fee."},
-      {"Question": "Do you offer emergency appointments?", "Answer": "Yes, we hold emergency slots each day. Please call as early as possible to secure one."}
+      {
+        "Question": "Do I need a referral to book an appointment?",
+        "Answer": "For private appointments, no referral is needed. For NHS services, please check with your GP first."
+      },
+      {
+        "Question": "What should I bring to my first appointment?",
+        "Answer": "Please bring a list of current medications, your insurance details if applicable, and any relevant medical records or test results."
+      },
+      {
+        "Question": "What is your cancellation policy?",
+        "Answer": "We require 24 hours' notice for cancellations. Late cancellations may incur a fee."
+      },
+      {
+        "Question": "Do you offer emergency appointments?",
+        "Answer": "Yes, we hold emergency slots each day. Please call as early as possible to secure one."
+      }
     ],
     "licence_items": [
-      {"Description": "CQC Registration", "Alert Days Before": 90},
-      {"Description": "Medical Indemnity Insurance", "Alert Days Before": 30},
-      {"Description": "GMC/GDC Registration", "Alert Days Before": 60},
-      {"Description": "Data Protection Registration", "Alert Days Before": 30},
-      {"Description": "Clinical Waste Contract", "Alert Days Before": 30}
+      {
+        "Description": "CQC Registration",
+        "Alert Days Before": 90
+      },
+      {
+        "Description": "Medical Indemnity Insurance",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "GMC/GDC Registration",
+        "Alert Days Before": 60
+      },
+      {
+        "Description": "Data Protection Registration",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Clinical Waste Contract",
+        "Alert Days Before": 30
+      }
     ],
     "contract_template": "PRIVATE HEALTHCARE AGREEMENT\n\nDate: {Date}\n\nBetween: {CompanyName} (the 'Practice')\nAnd: {ClientName} (the 'Patient')\n\n1. SERVICES\n{ServiceDescription}\n\n2. FEES\nThe agreed fee is {Fee}.\n\n3. TERMS\nPayment is due at the time of service unless a payment plan has been agreed in writing.\nThis agreement is governed by the laws of England and Wales.\n\nSigned: ______________________   Date: ____________\n{CompanyName}"
   },
   "agency": {
     "name": "Creative & Marketing Agency",
     "description": "For marketing agencies, design studios, PR firms, and creative consultancies. Manages campaign workflows, client retainers, social media scheduling, and project delivery.",
-    "modules": ["01", "02", "05", "06", "08", "09", "13", "14", "17", "18", "19", "21", "22", "23", "32", "33", "34"],
+    "modules": [
+      "01",
+      "02",
+      "05",
+      "06",
+      "08",
+      "13",
+      "14",
+      "17",
+      "18",
+      "19",
+      "21",
+      "22",
+      "23",
+      "32",
+      "33",
+      "34"
+    ],
     "sheet_tabs": {
       "invoices": "Invoice_Log",
       "leads": "Lead_Log",
@@ -145,23 +336,65 @@
       "chatbot": "Chatbot_Knowledge"
     },
     "faq_knowledge": [
-      {"Question": "What services do you offer?", "Answer": "We offer full-service marketing including brand strategy, social media management, content creation, PPC advertising, SEO, and website design."},
-      {"Question": "How much does a marketing campaign cost?", "Answer": "Campaign costs vary by scope and channels. We offer packages starting from GBP 1,500/month. We'll provide a tailored proposal after an initial consultation."},
-      {"Question": "How do you measure results?", "Answer": "We provide monthly reports with KPIs relevant to your goals - leads, conversions, engagement rates, ROI, and more."},
-      {"Question": "What is your onboarding process?", "Answer": "We start with a discovery session, then develop a strategy document, set up tracking and accounts, and launch within 2-3 weeks."}
+      {
+        "Question": "What services do you offer?",
+        "Answer": "We offer full-service marketing including brand strategy, social media management, content creation, PPC advertising, SEO, and website design."
+      },
+      {
+        "Question": "How much does a marketing campaign cost?",
+        "Answer": "Campaign costs vary by scope and channels. We offer packages starting from GBP 1,500/month. We'll provide a tailored proposal after an initial consultation."
+      },
+      {
+        "Question": "How do you measure results?",
+        "Answer": "We provide monthly reports with KPIs relevant to your goals - leads, conversions, engagement rates, ROI, and more."
+      },
+      {
+        "Question": "What is your onboarding process?",
+        "Answer": "We start with a discovery session, then develop a strategy document, set up tracking and accounts, and launch within 2-3 weeks."
+      }
     ],
     "licence_items": [
-      {"Description": "Professional Indemnity Insurance", "Alert Days Before": 30},
-      {"Description": "Employer's Liability Insurance", "Alert Days Before": 30},
-      {"Description": "Data Protection Registration", "Alert Days Before": 30},
-      {"Description": "Software Licences (Adobe etc.)", "Alert Days Before": 14}
+      {
+        "Description": "Professional Indemnity Insurance",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Employer's Liability Insurance",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Data Protection Registration",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Software Licences (Adobe etc.)",
+        "Alert Days Before": 14
+      }
     ],
     "contract_template": "MARKETING SERVICES AGREEMENT\n\nDate: {Date}\n\nBetween: {CompanyName} (the 'Agency')\nAnd: {ClientName} (the 'Client')\n\n1. SERVICES\nThe Agency agrees to provide:\n{ServiceDescription}\n\n2. FEE\n{Fee} per month, payable in advance.\n\n3. TERM\nMinimum term of 3 months, rolling thereafter with 30 days' notice.\n\n4. GOVERNING LAW\nThis agreement is governed by the laws of England and Wales.\n\nSigned: ______________________   Date: ____________\n{CompanyName}"
   },
   "property": {
     "name": "Property & Estate Agency",
     "description": "For estate agents, letting agents, property managers, and surveyors. Manages property listings, viewings, tenant communications, compliance certificates, and landlord obligations.",
-    "modules": ["01", "02", "03", "05", "06", "08", "09", "10", "12", "13", "14", "15", "17", "20", "22", "23", "26", "33"],
+    "modules": [
+      "01",
+      "02",
+      "03",
+      "05",
+      "06",
+      "08",
+      "10",
+      "12",
+      "13",
+      "14",
+      "15",
+      "17",
+      "20",
+      "22",
+      "23",
+      "26",
+      "33"
+    ],
     "sheet_tabs": {
       "invoices": "Invoice_Log",
       "leads": "Lead_Log",
@@ -177,26 +410,64 @@
       "timesheets": "Timesheets",
       "chatbot": "Chatbot_Knowledge",
       "properties": "Property_Listings",
-      "viewings": "Viewing_Log"
+      "viewings": "Viewings_Log"
     },
     "faq_knowledge": [
-      {"Question": "What are your fees for selling a property?", "Answer": "Our commission is typically 1-1.5% + VAT of the final sale price, payable on completion. No upfront fees."},
-      {"Question": "How long will it take to sell my property?", "Answer": "The average sale time in your area is currently 8-12 weeks from listing to exchange. We'll provide a more specific estimate at valuation."},
-      {"Question": "Do you offer virtual viewings?", "Answer": "Yes, we offer virtual tours and video viewings for all our properties. We can also arrange accompanied physical viewings."},
-      {"Question": "What is the tenancy deposit scheme?", "Answer": "All deposits must be protected in a government-approved scheme within 30 days. We handle this automatically for our managed properties."}
+      {
+        "Question": "What are your fees for selling a property?",
+        "Answer": "Our commission is typically 1-1.5% + VAT of the final sale price, payable on completion. No upfront fees."
+      },
+      {
+        "Question": "How long will it take to sell my property?",
+        "Answer": "The average sale time in your area is currently 8-12 weeks from listing to exchange. We'll provide a more specific estimate at valuation."
+      },
+      {
+        "Question": "Do you offer virtual viewings?",
+        "Answer": "Yes, we offer virtual tours and video viewings for all our properties. We can also arrange accompanied physical viewings."
+      },
+      {
+        "Question": "What is the tenancy deposit scheme?",
+        "Answer": "All deposits must be protected in a government-approved scheme within 30 days. We handle this automatically for our managed properties."
+      }
     ],
     "licence_items": [
-      {"Description": "Property Ombudsman Membership", "Alert Days Before": 30},
-      {"Description": "Client Money Protection", "Alert Days Before": 30},
-      {"Description": "Professional Indemnity Insurance", "Alert Days Before": 30},
-      {"Description": "AML Registration", "Alert Days Before": 30}
+      {
+        "Description": "Property Ombudsman Membership",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Client Money Protection",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "Professional Indemnity Insurance",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "AML Registration",
+        "Alert Days Before": 30
+      }
     ],
     "contract_template": "PROPERTY SERVICES AGREEMENT\n\nDate: {Date}\n\nBetween: {CompanyName} (the 'Agent')\nAnd: {ClientName} (the 'Client')\n\n1. SERVICES\nThe Agent agrees to provide:\n{ServiceDescription}\n\n2. FEE\n{Fee}\n\n3. TERMS\nThis agreement is governed by the laws of England and Wales and the Property Ombudsman Code of Practice.\n\nSigned: ______________________   Date: ____________\n{CompanyName}"
   },
   "accountancy": {
     "name": "Accountancy & Bookkeeping",
     "description": "For accountants, bookkeepers, tax advisors, and payroll bureaus. Manages client deadlines, MTD compliance, document collection, and recurring billing.",
-    "modules": ["01", "05", "06", "08", "10", "11", "13", "14", "16", "19", "20", "22", "23", "27"],
+    "modules": [
+      "01",
+      "05",
+      "06",
+      "08",
+      "10",
+      "13",
+      "14",
+      "16",
+      "19",
+      "20",
+      "22",
+      "23",
+      "27"
+    ],
     "sheet_tabs": {
       "invoices": "Invoice_Log",
       "leads": "Lead_Log",
@@ -214,16 +485,40 @@
       "deadlines": "Tax_Deadlines"
     },
     "faq_knowledge": [
-      {"Question": "What accounting software do you work with?", "Answer": "We work with Xero, QuickBooks, Sage, and FreeAgent. We can also work with spreadsheets if you prefer."},
-      {"Question": "When is my tax return due?", "Answer": "Self-assessment tax returns are due by 31st January following the tax year end. We'll send you reminders well in advance."},
-      {"Question": "How much do you charge for bookkeeping?", "Answer": "Our bookkeeping packages start from GBP 150/month depending on transaction volume. We offer fixed monthly fees so there are no surprises."},
-      {"Question": "Do you handle HMRC enquiries?", "Answer": "Yes, we handle all HMRC correspondence and enquiries as part of our service. We'll notify you immediately if any issues arise."}
+      {
+        "Question": "What accounting software do you work with?",
+        "Answer": "We work with Xero, QuickBooks, Sage, and FreeAgent. We can also work with spreadsheets if you prefer."
+      },
+      {
+        "Question": "When is my tax return due?",
+        "Answer": "Self-assessment tax returns are due by 31st January following the tax year end. We'll send you reminders well in advance."
+      },
+      {
+        "Question": "How much do you charge for bookkeeping?",
+        "Answer": "Our bookkeeping packages start from GBP 150/month depending on transaction volume. We offer fixed monthly fees so there are no surprises."
+      },
+      {
+        "Question": "Do you handle HMRC enquiries?",
+        "Answer": "Yes, we handle all HMRC correspondence and enquiries as part of our service. We'll notify you immediately if any issues arise."
+      }
     ],
     "licence_items": [
-      {"Description": "ACCA/ICAEW Practising Certificate", "Alert Days Before": 60},
-      {"Description": "Professional Indemnity Insurance", "Alert Days Before": 30},
-      {"Description": "AML Supervision Registration", "Alert Days Before": 30},
-      {"Description": "ICO Data Protection Registration", "Alert Days Before": 30}
+      {
+        "Description": "ACCA/ICAEW Practising Certificate",
+        "Alert Days Before": 60
+      },
+      {
+        "Description": "Professional Indemnity Insurance",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "AML Supervision Registration",
+        "Alert Days Before": 30
+      },
+      {
+        "Description": "ICO Data Protection Registration",
+        "Alert Days Before": 30
+      }
     ],
     "contract_template": "ACCOUNTANCY SERVICES AGREEMENT\n\nDate: {Date}\n\nBetween: {CompanyName} (the 'Accountant')\nAnd: {ClientName} (the 'Client')\n\n1. SERVICES\nThe Accountant agrees to provide:\n{ServiceDescription}\n\n2. FEE\n{Fee} per month, payable by direct debit.\n\n3. TERM\nInitial term of 12 months, rolling thereafter with 3 months' notice.\n\n4. GOVERNING LAW\nThis agreement is governed by the laws of England and Wales.\n\nSigned: ______________________   Date: ____________\n{CompanyName}"
   }

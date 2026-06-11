@@ -66,13 +66,16 @@ def get_context(cfg):
 
 
 def save_memory(cfg, key, value):
-    """Upserts a key-value row in the GAOS_Memory tab."""
+    """Upserts a key-value row in the GAOS_Memory tab.
+    Canonical columns: Key | Value | Updated"""
     sheet_id = cfg["google_sheets"]["sheet_id"]
     try:
         rows = core.sheets_read_all(sheet_id, MEMORY_TAB)
         for i, r in enumerate(rows):
             if r.get("Key") == key:
-                core.sheets_update_cell(sheet_id, MEMORY_TAB, i + 2, 2, value)
+                core.sheets_update_cell(sheet_id, MEMORY_TAB, i + 2, "Value", value)
+                core.sheets_update_cell(sheet_id, MEMORY_TAB, i + 2, "Updated",
+                                        core.timestamp())
                 return
         core.sheets_append_row(sheet_id, MEMORY_TAB, [key, value, core.timestamp()])
     except Exception as e:
@@ -98,8 +101,12 @@ def learn_invoices(cfg):
         return
 
     amounts   = [_parse_amount(r.get("Amount", 0)) for r in rows if _parse_amount(r.get("Amount",0)) > 0]
-    vendors   = [str(r.get("Vendor","")).strip() for r in rows if r.get("Vendor")]
-    late_rows = [r for r in rows if str(r.get("Chase Sent","")).lower() == "sent"]
+    # "Client" holds the counterparty: the supplier on Status "Received"
+    # rows (module 01), the customer on issued invoices (module 19)
+    vendors   = [str(r.get("Client","")).strip() for r in rows
+                 if r.get("Client") and str(r.get("Status","")).lower() == "received"]
+    late_rows = [r for r in rows
+                 if str(r.get("Chase Sent","")).lower().startswith("sent")]
 
     if amounts:
         avg = sum(amounts) / len(amounts)
@@ -116,7 +123,7 @@ def learn_invoices(cfg):
                     f"Most common suppliers: {', '.join(v for v,_ in top)}.")
 
     if late_rows:
-        late_names = list({str(r.get("Vendor","")).strip() for r in late_rows})[:3]
+        late_names = list({str(r.get("Client","")).strip() for r in late_rows})[:3]
         save_memory(cfg, "late_payers",
                     f"Suppliers with previous late payment chases: {', '.join(late_names)}. "
                     f"Consider earlier reminder timing for these.")
@@ -136,22 +143,24 @@ def learn_leads(cfg):
     # Day-of-week distribution
     day_counts = Counter()
     for r in rows:
-        try:
-            dt = datetime.strptime(str(r.get("Logged At",""))[:10], "%Y-%m-%d")
+        dt = core.parse_date(r.get("Date", ""))
+        if dt:
             day_counts[dt.strftime("%A")] += 1
-        except Exception:
-            pass
 
     if day_counts:
         busiest = day_counts.most_common(1)[0][0]
         save_memory(cfg, "busiest_lead_day",
                     f"Most leads arrive on {busiest}s. Prioritise fast replies on that day.")
 
-    # Conversion rate
-    won  = sum(1 for r in rows if str(r.get("Status","")).lower() in ("won","converted","closed-won"))
+    # Conversion rate — only meaningful once leads have had outcomes recorded;
+    # never feed a thin-data "0% conversion" into every AI prompt.
+    won      = sum(1 for r in rows if str(r.get("Status","")).lower() in ("won","converted","closed-won"))
+    resolved = sum(1 for r in rows if str(r.get("Status","")).lower()
+                   in ("won","converted","closed-won","closed","lost"))
     rate = round(won / len(rows) * 100) if rows else 0
-    save_memory(cfg, "lead_conversion",
-                f"Lead conversion rate: {rate}% ({won} won from {len(rows)} total leads).")
+    if resolved >= 5:
+        save_memory(cfg, "lead_conversion",
+                    f"Lead conversion rate: {rate}% ({won} won from {len(rows)} total leads).")
 
     log.info(f"Lead memory updated ({len(rows)} leads analysed, {rate}% conversion)")
 
@@ -166,12 +175,14 @@ def learn_revenue(cfg):
     # Last 4 weeks totals
     weekly = {}
     for r in rows:
-        try:
-            dt   = datetime.strptime(str(r.get("Logged At",""))[:10], "%Y-%m-%d")
-            wkey = dt.strftime("%Y-W%W")
-            weekly[wkey] = weekly.get(wkey, 0) + _parse_amount(r.get("Amount", 0))
-        except Exception:
-            pass
+        # Revenue = invoices the business issued; skip received supplier ones
+        if str(r.get("Status", "")).lower() == "received":
+            continue
+        dt = core.parse_date(r.get("Invoice Date", ""))
+        if not dt:
+            continue
+        wkey = dt.strftime("%Y-W%W")
+        weekly[wkey] = weekly.get(wkey, 0) + _parse_amount(r.get("Amount", 0))
 
     if len(weekly) >= 2:
         weeks  = sorted(weekly.keys())[-4:]
@@ -317,19 +328,8 @@ def run_learning_cycle(cfg):
 
 def ensure_memory_tab(cfg):
     """Creates the GAOS_Memory tab if it doesn't exist."""
-    sheet_id = cfg["google_sheets"]["sheet_id"]
-    try:
-        core.sheets_read_all(sheet_id, MEMORY_TAB)
-    except Exception:
-        try:
-            import gspread
-            gc          = gspread.service_account(filename="google_credentials.json")
-            spreadsheet = gc.open_by_key(sheet_id)
-            tab         = spreadsheet.add_worksheet(title=MEMORY_TAB, rows=50, cols=3)
-            tab.append_row(["Key", "Value", "Updated At"])
-            log.info(f"Created {MEMORY_TAB} tab")
-        except Exception as e:
-            log.error(f"Could not create memory tab: {e}")
+    core.sheets_find_or_create_tab(cfg["google_sheets"]["sheet_id"],
+                                   MEMORY_TAB, ["Key", "Value", "Updated"])
 
 
 # ══════════════════════════════════════════════════════════════
@@ -341,7 +341,7 @@ def run():
     log.info(f"Scheduled: every Monday at {UPDATE_HOUR}:00. Ctrl+C to stop.")
     core.run_loop(
         lambda: run_learning_cycle(cfg) if core.should_run_at(UPDATE_HOUR, weekday=UPDATE_WKDAY) else None,
-        cfg["settings"]["check_every_seconds"]
+        cfg.get("settings", {}).get("check_every_seconds", 300)
     )
 
 

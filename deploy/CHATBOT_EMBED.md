@@ -13,20 +13,24 @@ Your GAOS server has a public URL, e.g.:
 Test it works by visiting:
     https://your-gaos-server.up.railway.app/health
 
-You should see: {"status": "ok", "service": "GAOS Web Server"}
+You should see a JSON response with "status": "ok", plus the loaded
+modules, config state, and AI provider status.
 
 ---
 
-## Step 2: Add ONE line to the client's website
+## Step 2: Add ONE tag to the client's website
 
-Paste this just before the closing </body> tag on any page:
+Paste this just before the closing </body> tag on any page.
+`data-gaos-url` is REQUIRED — it tells the widget where your server
+lives. `data-business-name` is optional and sets the chat window title.
 
 ```html
-<script src="https://your-gaos-server.up.railway.app/widget.js"></script>
+<script src="https://your-gaos-server.up.railway.app/widget.js"
+        data-gaos-url="https://your-gaos-server.up.railway.app"
+        data-business-name="Client Business Name"></script>
 ```
 
 That's it. A chat bubble appears in the bottom-right corner.
-It's already branded with the business name from your config.json.
 
 ---
 

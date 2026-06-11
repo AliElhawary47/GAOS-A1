@@ -84,11 +84,14 @@ def process_email(gmail, cfg, faq_text, message_id):
     draft      = core.safe_text(data.get("DraftReply"), "")
 
     if can_answer and draft:
-        core.gmail_create_draft(gmail, sender, cfg["gmail"]["watch_inbox"],
-                                f"Re: {subject}", draft)
+        if not core.gmail_create_draft(gmail, sender, cfg["gmail"]["watch_inbox"],
+                                       f"Re: {subject}", draft):
+            log.warning(f"Draft save failed for {sender} — will retry next poll.")
+            return False
         log.info(f"FAQ match — draft reply saved for: {sender}")
         # Mark read since we've handled it (draft is ready)
         core.gmail_mark_read(gmail, message_id)
+        core.gmail_label(gmail, message_id, GAOS_FAQ_LABEL)
         return True
     else:
         # Not an FAQ — leave it unread so a human handles it
@@ -104,11 +107,16 @@ def process_email(gmail, cfg, faq_text, message_id):
             ])
         except Exception:
             pass
+        # Label so this email is examined (and billed for) exactly once
+        core.gmail_label(gmail, message_id, GAOS_FAQ_LABEL)
         return False
 
 
 
-FAQ_QUERY = "is:unread -subject:enquiry -subject:invoice -has:attachment"
+GAOS_FAQ_LABEL = "GAOS-FAQ"
+
+FAQ_QUERY = ('is:unread -label:gaos-faq -subject:enquiry -subject:invoice '
+             '-subject:quote -"contact form" -"new client" -has:attachment')
 
 def scan(gmail, cfg):
     """Called by gaos_engine.py each poll cycle. Reloads FAQs each cycle."""
@@ -123,9 +131,13 @@ def scan(gmail, cfg):
 def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
+    # Ensure the gaps tab exists even when the installer hasn't been run
+    gaps_tab = cfg["google_sheets"]["tabs"].get("faq_gaps", "FAQ_Gaps")
+    core.sheets_find_or_create_tab(cfg["google_sheets"]["sheet_id"], gaps_tab,
+                                   ["Subject", "Question", "From", "Logged At"])
     log.info("module_06_faq_reply: Watching inbox for answerable questions.")
     core.run_loop(lambda: scan(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

@@ -39,7 +39,10 @@ def _store_history(sender, history):
     _conversations.pop(sender, None)
     _conversations[sender] = history[-MAX_HISTORY:]
     while len(_conversations) > MAX_SESSIONS:
-        _conversations.pop(next(iter(_conversations)))
+        try:
+            _conversations.pop(next(iter(_conversations)), None)
+        except StopIteration:  # racing eviction emptied the dict already
+            break
 
 
 
@@ -75,10 +78,13 @@ def escalate(cfg, sender, history):
                       tw["owner_mobile"],
                       f"WhatsApp escalation from {sender}: {note}")
 
+    # Canonical Lead_Log order:
+    # [Date, From, Email, Subject, Summary, Status, Chase Sent, Source]
     core.sheets_append_row(
         cfg["google_sheets"]["sheet_id"],
         cfg["google_sheets"]["tabs"].get("leads", "Lead_Log"),
-        [sender, sender, note, "WhatsApp Escalation", core.timestamp()]
+        [core.timestamp(), sender, "", "WhatsApp escalation", note,
+         "WhatsApp Escalation", "", ""]
     )
     log.info(f"Escalated WhatsApp conversation from {sender}")
 
@@ -106,6 +112,11 @@ def handle_message(cfg, sender, body):
         system_prompt=build_system_prompt(cfg, knowledge),
         max_tokens=200
     )
+
+    if not reply:
+        # Twilio rejects empty TwiML Message bodies — always say something.
+        log.error(f"AI reply failed for {sender} — sending fallback")
+        return "Sorry, I'm having trouble right now — please try again shortly."
 
     # Check for escalation token
     if ESCALATE_FLAG in reply:

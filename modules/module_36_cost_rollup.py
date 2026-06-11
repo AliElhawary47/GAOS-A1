@@ -9,7 +9,9 @@ cost breakdown to the admin address.  Covers:
   • Gross margin estimate vs subscription revenue
 
 Sheet tab required: Usage_Log
-Columns: Date | Module | Tokens_Used | Cost_GBP
+Columns: Timestamp | Module | Tokens | Cost GBP
+(Populated automatically by the AI manager on every successful call;
+the Module column holds the provider name — deepseek / groq.)
 
 Target client:  Any GAOS subscriber who wants to see the AI running cost.
 Pain solved:    Unknown AI cost creep; justifying the subscription value.
@@ -32,7 +34,8 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info("Scheduled: 1st of every month at %d:00. Ctrl+C to stop.", SEND_HOUR)
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg),
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 def generate_monthly_report(gmail, cfg):
@@ -51,7 +54,8 @@ def generate_monthly_report(gmail, cfg):
     last_year   = now.year  if now.month > 1 else now.year - 1
     period_str  = f"{last_year}-{last_month:02d}"
 
-    rows = [r for r in usage_rows if str(r.get("Date", "")).startswith(period_str)]
+    rows = [r for r in usage_rows
+            if str(r.get("Timestamp", "")).startswith(period_str)]
     if not rows:
         log.info("No usage data for %s — skipping report.", period_str)
         return
@@ -62,8 +66,11 @@ def generate_monthly_report(gmail, cfg):
 
     for r in rows:
         mod    = str(r.get("Module", "unknown"))
-        tokens = int(r.get("Tokens_Used", 0) or 0)
-        cost   = float(r.get("Cost_GBP",   0) or 0)
+        tokens = core.safe_int(r.get("Tokens", 0), 0)
+        try:
+            cost = float(str(r.get("Cost GBP", 0) or 0).replace("£", ""))
+        except ValueError:
+            cost = 0.0
         if mod not in module_stats:
             module_stats[mod] = {"calls": 0, "tokens": 0, "cost": 0.0}
         module_stats[mod]["calls"]  += 1
@@ -107,7 +114,7 @@ def generate_monthly_report(gmail, cfg):
         "-" * 56,
         *ai_lines,
         "",
-        "By Module (top 10 by cost):",
+        "By Provider from Usage_Log (top 10 by cost):",
         "-" * 56,
     ]
     for mod, stats in sorted(module_stats.items(),

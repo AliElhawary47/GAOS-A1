@@ -36,9 +36,13 @@ Lead text:
 ONLY JSON. No markdown."""
 
 
+GAOS_URGENT_LABEL = "GAOS-Urgent"
+
+
 def process_urgent_lead(gmail, cfg, message_id):
     headers, msg = core.gmail_get_message(gmail, message_id)
     sender       = headers.get("From", "Unknown")
+    subject      = headers.get("Subject", "")
     body_text    = core.gmail_get_body_text(msg)
 
     log.info(f"Urgent lead from {sender}")
@@ -59,24 +63,32 @@ def process_urgent_lead(gmail, cfg, message_id):
 
     if "YOUR_" in tw["account_sid"]:
         log.warning("Twilio not configured — would have sent: " + msg_text)
+        ok = True  # nothing to retry — treat as handled so we don't re-run the AI every poll
     else:
         ok = core.send_sms(tw["account_sid"], tw["auth_token"],
                            tw["from_number"], tw["owner_mobile"], msg_text)
-        log.info("SMS sent to owner." if ok else "SMS failed.")
+        log.info("SMS sent to owner." if ok else "SMS failed — will retry next poll.")
+
+    if not ok:
+        # Leave the email unlabelled (and unread) so the next poll retries the SMS.
+        return False
 
     # Log to leads sheet
+    # Canonical Lead_Log columns: Date | From | Email | Subject | Summary | Status | Chase Sent | Source
     core.sheets_append_row(
         cfg["google_sheets"]["sheet_id"],
         cfg["google_sheets"]["tabs"]["leads"],
-        [name, sender, need, "SMS Sent", core.timestamp()]
+        [core.timestamp(), name, sender, subject, need, "SMS Sent", "", ""]
     )
 
-    core.gmail_mark_read(gmail, message_id)
+    # Label instead of marking read — module 02 still needs the unread email
+    # to draft its AI reply; the label stops this module reprocessing it.
+    core.gmail_label(gmail, message_id, GAOS_URGENT_LABEL)
     return True
 
 
 
-URGENT_QUERY = 'is:unread -label:GAOS/Lead (subject:enquiry OR subject:quote OR subject:"contact form" OR subject:emergency)'
+URGENT_QUERY = 'is:unread -label:GAOS/Lead -label:gaos-urgent (subject:enquiry OR subject:quote OR subject:"contact form" OR subject:emergency)'
 
 def scan(gmail, cfg):
     """Called by gaos_engine.py each poll cycle."""
@@ -91,7 +103,7 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info("module_03_urgent_alert: Watching for urgent leads. Fast SMS mode.")
-    poll = min(cfg["settings"]["check_every_seconds"], 60)
+    poll = min(cfg.get("settings", {}).get("check_every_seconds", 300), 60)
     core.run_loop(lambda: scan(gmail, cfg), poll)
 
 

@@ -35,13 +35,13 @@ log = core.get_logger("planning_radar")
 RUN_HOUR   = 8
 RUN_WKDAY  = 0   # Monday for the weekly brief
 
-# The UK Planning Portal open data API (no key required)
-# Individual councils can also be configured in config.json
+# The national planning.data.gov.uk entity API (no key required).
+# A lat/long point query returns only applications whose boundary contains
+# that point — strictly local, but coverage is limited to councils that
+# publish to the national dataset. Configure business.council_planning_url
+# in config.json for full local coverage.
 PLANNING_API = "https://www.planning.data.gov.uk/entity.json"
-PLANNING_SEARCH_URL = "https://api.dev.dluhc.digital/planning-applications/search"
-
-# Fallback: RSS feed approach per council
-COUNCIL_RSS_TEMPLATE = "{council_url}/planning/search?postcode={postcode}&type=application"
+GEOCODE_API  = "https://api.postcodes.io/postcodes/{postcode}"
 
 # Work type keywords relevant to trades
 TRADES_KEYWORDS = [
@@ -54,52 +54,67 @@ TRADES_KEYWORDS = [
 
 
 
+def _geocode_postcode(postcode: str):
+    """Free postcode → (longitude, latitude) via postcodes.io. None on failure."""
+    import requests
+    try:
+        r = requests.get(GEOCODE_API.format(postcode=postcode.replace(" ", "")),
+                         timeout=10)
+        r.raise_for_status()
+        result = r.json().get("result", {})
+        if result.get("longitude") is not None:
+            return result["longitude"], result["latitude"]
+    except Exception as e:
+        log.warning(f"Postcode geocode failed for {postcode!r}: {e}")
+    return None
+
+
 def fetch_planning_data(cfg):
     """
-    Fetches recent planning applications from the configured source.
+    Fetches planning applications NEAR THE CONFIGURED POSTCODE only.
 
-    Falls back gracefully: tries the DLUHC API first, then the
-    council-configured URL, then returns an empty list.
-
-    The client configures their local postcode and council URL
-    in config.json under business.postcode and business.council_url.
+    Primary: national planning.data.gov.uk point query (location-scoped by
+    construction; sparse coverage). Secondary: the council-configured URL.
+    Never returns un-located nationwide results — an empty list is the
+    honest answer when no local source has data.
     """
     import requests
 
-    business   = cfg.get("business", {})
-    postcode   = business.get("postcode", "").replace(" ", "+")
+    business    = cfg.get("business", {})
+    postcode    = business.get("postcode", "").strip()
     council_url = business.get("council_planning_url", "")
-    radius_km   = business.get("planning_radius_km", 10)
 
     applications = []
 
-    # Primary: DLUHC Planning Data API (national, free, no key)
-    try:
-        since = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-        url = (f"https://www.planning.data.gov.uk/entity.json"
-               f"?dataset=development-plan-document"
-               f"&start-date={since}&limit=50")
-        r = requests.get(url, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            entities = data.get("entities", [])
-            for e in entities:
+    # Primary: national dataset, filtered to the business's location
+    coords = _geocode_postcode(postcode) if postcode else None
+    if coords:
+        try:
+            r = requests.get(
+                PLANNING_API,
+                params={"dataset": "planning-application",
+                        "longitude": coords[0], "latitude": coords[1],
+                        "limit": 50},
+                timeout=20,
+            )
+            r.raise_for_status()
+            for e in r.json().get("entities", []):
                 applications.append({
-                    "address":  e.get("name", "Unknown address"),
-                    "type":     e.get("typology", "Planning application"),
-                    "date":     e.get("start-date", ""),
-                    "ref":      e.get("reference", ""),
-                    "url":      f"https://www.planning.data.gov.uk/entity/{e.get('entity','')}",
+                    "address": e.get("name") or f"Near {postcode} — ref {e.get('reference','?')}",
+                    "type":    e.get("description", "Planning application"),
+                    "date":    e.get("entry-date", ""),
+                    "ref":     e.get("reference", ""),
+                    "url":     f"https://www.planning.data.gov.uk/entity/{e.get('entity','')}",
                 })
-    except Exception as e:
-        log.error(f"DLUHC API error: {e}")
+        except Exception as e:
+            log.error(f"planning.data.gov.uk error: {e}")
 
     # Secondary: council-specific URL if configured
     if not applications and council_url:
         try:
             r = requests.get(
-                f"{council_url}?postcode={postcode}&period=7days",
-                timeout=10
+                f"{council_url}?postcode={postcode.replace(' ', '+')}&period=7days",
+                timeout=15
             )
             if r.status_code == 200:
                 # Most councils return HTML — we look for application references
@@ -115,6 +130,11 @@ def fetch_planning_data(cfg):
                     })
         except Exception as e:
             log.error(f"Council API error: {e}")
+
+    if not applications and not council_url:
+        log.info("Planning Radar: no national coverage for this area — "
+                 "set business.council_planning_url in config.json for "
+                 "full local coverage.")
 
     return applications
 
@@ -161,8 +181,9 @@ def run_planning_scan(gmail, cfg):
             gmail, cfg["gmail"]["alert_email"], cfg["gmail"]["watch_inbox"],
             "GAOS Planning Radar — No new applications this week",
             "No new planning applications were found in your area this week.\n\n"
-            "This may mean the council feed is unavailable. Check your "
-            "business.council_planning_url setting in config.json.\n\n"
+            "Note: the national planning dataset only covers some councils. "
+            "For full local coverage set business.council_planning_url in "
+            "config.json to your council's planning search page.\n\n"
             "Aether Frameworks — GAOS™ Planning Radar"
         )
         return 0
@@ -180,14 +201,18 @@ def run_planning_scan(gmail, cfg):
         months = months_until_work_start(app.get("type", ""))
         contact_date = (today + timedelta(days=months * 30)).strftime("%Y-%m-%d")
 
+        # Canonical Lead_Log order:
+        # [Date, From, Email, Subject, Summary, Status, Chase Sent, Source]
         core.sheets_append_row(sheet_id, tab, [
-            app.get("address", "Unknown"),      # Name (address)
+            core.timestamp(),
+            app.get("address", "Unknown"),
             "",                                 # Email — to be found by owner
-            f"{app.get('type','Application')} — Ref: {app.get('ref','')}",
-            "Planning Lead",                    # Status
-            core.timestamp(),                   # Logged At
-            contact_date,                       # Suggested contact date
-            app.get("url", ""),                 # Source URL
+            f"Planning application {app.get('ref','')}".strip(),
+            f"{str(app.get('type','Application'))[:150]} — "
+            f"suggested contact date {contact_date}",
+            "Planning Lead",
+            "",
+            app.get("url", ""),
         ])
         leads_added += 1
 
@@ -249,7 +274,8 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info(f"Scheduled: every Monday at {RUN_HOUR}:00. Ctrl+C to stop.")
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg),
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

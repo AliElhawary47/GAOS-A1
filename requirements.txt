@@ -1,4 +1,4 @@
-# GAOS™ v3.2 — Python Dependencies
+# GAOS™ v3.4 — Python Dependencies
 # Install with:  pip install -r requirements.txt
 # Runs free on Railway.app or Oracle Cloud Always Free tier.
 
@@ -11,4 +11,4 @@ google-auth-httplib2==0.2.0       # Google HTTP transport
 google-api-python-client==2.126.0 # Gmail API client
 flask==3.0.2                      # Web server for conversational modules (22-24)
 gunicorn==21.2.0                  # Production server for Railway/Oracle deployment
-psutil==5.9.8                     # Memory/CPU stats for dashboard and cost rollup (module 36)
+psutil==5.9.8                     # Memory/CPU stats for /health and cost rollup (module 36)

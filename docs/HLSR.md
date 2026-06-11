@@ -1,6 +1,6 @@
-# GAOS™ High-Level System Requirements — v3.3
+# GAOS™ High-Level System Requirements — v3.4
 
-**Document ID:** GAOS-HLSR-3.3  
+**Document ID:** GAOS-HLSR-3.4  
 **Product:** Ghost Assistant Operating System (GAOS™)  
 **Vendor:** Aether Frameworks Ltd  
 **Status:** Released  
@@ -26,15 +26,15 @@
 
 ### 1.1 Purpose
 
-This document defines the High-Level System Requirements (HLSR) for the Ghost Assistant Operating System (GAOS™) version 3.3. It establishes the functional capabilities, non-functional properties, constraints, and acceptance criteria that the system must satisfy. It is intended to serve as the authoritative requirements baseline for design, implementation, testing, and audit activities.
+This document defines the High-Level System Requirements (HLSR) for the Ghost Assistant Operating System (GAOS™) version 3.4. It establishes the functional capabilities, non-functional properties, constraints, and acceptance criteria that the system must satisfy. It is intended to serve as the authoritative requirements baseline for design, implementation, testing, and audit activities.
 
 GAOS™ is a modular, Python-based business automation platform designed to operate continuously inside a client's own Google account. The system watches a Gmail inbox, processes incoming email with artificial intelligence, and executes back-office actions automatically across nine operational zones covering administration, sales, finance, customer engagement, scheduling, conversational AI, business intelligence, external monitoring, and marketing.
 
-This document does not prescribe internal implementation details. Detailed component-level and module-level specifications are contained in the companion Low-Level System Requirements document (GAOS-LLSR-3.3).
+This document does not prescribe internal implementation details. Detailed component-level and module-level specifications are contained in the companion Low-Level System Requirements document (GAOS-LLSR-3.4).
 
 ### 1.2 Scope
 
-The scope of GAOS™ v3.2 encompasses:
+The scope of GAOS™ v3.4 encompasses:
 
 - A shared runtime library providing Gmail OAuth connectivity, Google Sheets data access, AI routing, Twilio messaging, scheduling utilities, audit logging, and cost tracking.
 - An AI Provider Manager implementing a primary-plus-fallback provider architecture with per-provider circuit breaker logic.
@@ -117,7 +117,7 @@ Requirements are identified by a hierarchical identifier of the form `<TYPE>-<SE
                 │                                      │
                 ▼                                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                     GAOS™ v3.2 DEPLOYMENT                                       │
+│                     GAOS™ v3.4 DEPLOYMENT                                       │
 │                                                                                 │
 │  ┌────────────────────────────────────────────────────────────────────────────┐ │
 │  │  gaos_launcher.py                                                          │ │
@@ -296,7 +296,7 @@ Requirements are identified by a hierarchical identifier of the form `<TYPE>-<SE
 
 **Title:** Sense zone external data ingestion  
 **Priority:** Should  
-**Description:** The system SHALL: (a) query the London Gazette API daily at 07:00 for insolvency, strike-off, and estate notices and cross-reference results against known clients and suppliers; (b) query HM Land Registry data weekly on Mondays at 09:00 for new property transactions near the configured postcode; (c) retrieve Bank of England base rate data and ONS CPI inflation data daily at 12:00 and on the 1st of each month and log changes to the Macro_Log tab.  
+**Description:** The system SHALL: (a) query the London Gazette API daily at 07:00 for corporate insolvency and estate notices and cross-reference results against known clients and suppliers; (b) query HM Land Registry data weekly on Mondays at 09:00 for new property transactions near the configured postcode; (c) retrieve Bank of England base rate data and ONS CPI inflation data daily at 12:00 and on the 1st of each month and log changes to the Macro_Log tab.  
 **Rationale:** Early warning of client/supplier insolvency can prevent bad debts. Property transaction data creates new leads for relevant businesses. Macroeconomic data context improves AI briefing quality for the Chief of Staff module.
 
 ---
@@ -497,8 +497,8 @@ Every AI API call SHALL result in a row written to the `Usage_Log` Sheets tab co
 **NFR-OB-004 — Heartbeat File**  
 The system SHALL write a heartbeat file (`gaos_heartbeat.json`) at each poll cycle. The file SHALL contain at minimum the last-updated timestamp and the active module count. External monitoring tools MAY use the age of this file to detect stalled poller processes.
 
-**NFR-OB-005 — AI Provider Status Dashboard**  
-The system SHALL expose AI provider status (provider name, total calls, total tokens, total cost GBP, circuit breaker state) via the `get_ai_status()` function in `gaos_ai.py`, which SHALL be queryable via the `/health` route or dashboard interface.
+**NFR-OB-005 — AI Provider Status Exposure**  
+The system SHALL expose AI provider status (provider name, total calls, total tokens, total cost GBP, circuit breaker state) via the `get_ai_status()` function in `gaos_ai.py`, which SHALL be queryable via the `ai` key of the `/health` route response.
 
 **NFR-OB-006 — System Resource Metrics**  
 The system SHALL collect and expose current process memory usage (RSS, MB), disk usage percentage, and CPU percentage using `psutil`. These metrics SHALL be available via `core.get_system_stats()` for inclusion in dashboards and the monthly cost report.

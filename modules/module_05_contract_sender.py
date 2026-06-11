@@ -94,13 +94,15 @@ def process_onboarding(gmail, cfg, message_id):
     service     = core.safe_text(data.get("ServiceDescription"), "Services as discussed")
     fee         = core.safe_text(data.get("Fee"), "To be confirmed")
 
-    # Fill the contract template
-    contract = get_template().format(
-        Date=core.timestamp(),
-        CompanyName=cfg["business"]["name"],
-        ClientName=client_name,
-        ServiceDescription=service,
-        Fee=fee,
+    # Fill the contract template — per-placeholder replace, so stray braces
+    # in a user-edited template can never raise like str.format would.
+    contract = (
+        get_template()
+        .replace("{Date}", core.timestamp())
+        .replace("{CompanyName}", cfg["business"]["name"])
+        .replace("{ClientName}", client_name)
+        .replace("{ServiceDescription}", service)
+        .replace("{Fee}", fee)
     )
 
     # Save a copy to the archive
@@ -121,10 +123,11 @@ def process_onboarding(gmail, cfg, message_id):
     log.info(f"Contract emailed to {client_mail}.")
 
     # Log to contracts sheet
+    # Canonical Contract_Log columns: Date | Client | Email | Service | Fee | Status | Contract Sent
     core.sheets_append_row(
         cfg["google_sheets"]["sheet_id"],
         cfg["google_sheets"]["tabs"]["contracts"],
-        [client_name, company, client_mail, service, fee, "Sent", core.timestamp()]
+        [core.timestamp(), client_name, client_mail, service, fee, "Sent", core.timestamp()]
     )
 
     # Alert the owner
@@ -158,7 +161,7 @@ def run():
     get_template()  # ensure template exists
     log.info("module_05_contract_sender: Watching for new client onboarding requests.")
     core.run_loop(lambda: scan(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ polished post with hashtags, then emails it ready to copy-paste, and
 optionally posts via a configured webhook (e.g. Buffer, Make, Zapier).
 
 Sheet tab required: Social_Queue
-Columns: Platform | Raw Idea | Scheduled Date | Status | Post Draft | Sent At
+Columns: Scheduled Date | Platform | Raw Idea | Status | Post Draft | Sent At
 
 Target client: Any business that needs consistent social presence.
 Pain solved:   Social media paralysis — ideas sitting unposted because nobody has time to write them.
@@ -18,10 +18,6 @@ from datetime import datetime
 import gaos_core as core
 
 log = core.get_logger("social_scheduler")
-
-STATUS_COL    = 4   # "Status"
-DRAFT_COL     = 5   # "Post Draft"
-SENT_AT_COL   = 6   # "Sent At"
 
 
 def build_post_prompt(platform, raw_idea, business_name):
@@ -49,11 +45,14 @@ def process_due_posts(gmail, cfg):
 
     for i, row in enumerate(rows):
         status    = str(row.get("Status",         "")).strip().lower()
-        scheduled = str(row.get("Scheduled Date", "")).strip()[:10]
+        scheduled = core.parse_date(row.get("Scheduled Date", ""))
         platform  = str(row.get("Platform",       "general")).strip()
         raw_idea  = str(row.get("Raw Idea",       "")).strip()
 
-        if status in ("sent", "cancelled") or scheduled > today or not raw_idea:
+        if status in ("sent", "cancelled") or not raw_idea:
+            continue
+        # Blank/unparseable or future date — hold the row until it is due
+        if not scheduled or scheduled.strftime("%Y-%m-%d") > today:
             continue
 
         log.info(f"Generating {platform} post for: {raw_idea[:50]}...")
@@ -78,16 +77,17 @@ def process_due_posts(gmail, cfg):
             f"Copy and paste this into {platform.title()} to post it.\n\n"
             f"Aether Frameworks — GAOS™ Social Scheduler"
         )
-        core.gmail_send(
+        ok = core.gmail_send(
             gmail, cfg["gmail"]["alert_email"], cfg["gmail"]["watch_inbox"],
             f"Your {platform.title()} post is ready — {today}", body
         )
 
-        # Update sheet
-        core.sheets_update_cell(sheet_id, tab, i + 2, DRAFT_COL, post_text)
-        core.sheets_update_cell(sheet_id, tab, i + 2, STATUS_COL, "Sent")
-        core.sheets_update_cell(sheet_id, tab, i + 2, SENT_AT_COL, core.timestamp())
-        sent += 1
+        # Update sheet — only mark Sent when the send actually succeeded
+        core.sheets_update_cell(sheet_id, tab, i + 2, "Post Draft", post_text)
+        if ok:
+            core.sheets_update_cell(sheet_id, tab, i + 2, "Status", "Sent")
+            core.sheets_update_cell(sheet_id, tab, i + 2, "Sent At", core.timestamp())
+            sent += 1
 
     return sent
 
@@ -97,7 +97,7 @@ def run():
     gmail = core.connect_gmail()
     log.info("module_18_social_scheduler: Watching Social_Queue for scheduled posts.")
     core.run_loop(lambda: process_due_posts(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

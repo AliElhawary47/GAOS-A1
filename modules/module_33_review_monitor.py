@@ -20,7 +20,7 @@ No third-party API needed. Works from the notification emails
 Google already sends to the business Gmail inbox.
 
 Sheet tab required: Reviews_Log
-Columns: Reviewer | Stars | Summary | Response Drafted | Date | Status
+Columns: Date | Platform | Reviewer | Stars | Review | Draft Reply | Actioned
 
 Target: Any business with a Google Business Profile.
 Pain:   Negative reviews going unanswered for days. Positive reviews
@@ -87,23 +87,30 @@ def process_review_email(gmail, cfg, msg_id):
         snippet = detail.get("snippet", "")
         subject = headers.get("Subject", "")
 
-        # Skip if already processed
-        if "gaos-reviewed" in str(detail.get("labelIds", [])):
-            return False
-
         stars    = extract_stars(snippet) or extract_stars(subject)
         reviewer = None
         m = re.search(r'"([^"]+)"\s+(?:rated|reviewed|left)', snippet + " " + subject)
         if m:
             reviewer = m.group(1)
 
-        is_negative = stars is not None and stars <= 3
+        # Unknown ratings get the needs-attention path — a 1-star review
+        # whose format we couldn't parse must never be silently filed
+        # as positive.
+        is_negative = stars is None or stars <= 3
+        stars_label = f"{stars}★" if stars is not None else "rating unknown"
         business    = cfg["business"]["name"]
         sheet_id    = cfg["google_sheets"]["sheet_id"]
         tab         = cfg["google_sheets"]["tabs"].get("reviews_log", "Reviews_Log")
 
-        sentiment = "negative" if is_negative else "positive"
-        log.info(f"Review detected: {stars}★ from {reviewer or 'unknown'} ({sentiment})")
+        sentiment = "needs attention" if is_negative else "positive"
+        log.info(f"Review detected: {stars_label} from {reviewer or 'unknown'} ({sentiment})")
+
+        # Mark read FIRST: if any alert below fails transiently, retrying
+        # the whole email would re-SMS/re-log on every poll forever.
+        gmail.users().messages().modify(
+            userId="me", id=msg_id,
+            body={"removeLabelIds": ["UNREAD"]}
+        ).execute()
 
         # Draft response
         if is_negative:
@@ -116,13 +123,15 @@ def process_review_email(gmail, cfg, msg_id):
             max_tokens=150, expect_json=False
         ) or "(Could not generate response — please write manually)"
 
-        # Log to sheet
+        # Canonical Reviews_Log:
+        # [Date, Platform, Reviewer, Stars, Review, Draft Reply, Actioned]
         core.sheets_append_row(sheet_id, tab, [
-            reviewer or "Unknown",
-            str(stars) if stars else "?",
-            snippet[:120],
-            response_draft[:200],
             core.timestamp(),
+            "Google",
+            reviewer or "Unknown",
+            stars if stars is not None else "",
+            snippet[:150],
+            response_draft[:200],
             "Draft ready"
         ])
 
@@ -132,13 +141,14 @@ def process_review_email(gmail, cfg, msg_id):
             if "YOUR_" not in tw["account_sid"]:
                 core.send_sms(tw["account_sid"], tw["auth_token"],
                               tw["from_number"], tw["owner_mobile"],
-                              f"⚠ Negative review ({stars}★) from {reviewer or 'a customer'}. "
+                              f"⚠ New review needs attention ({stars_label}) from "
+                              f"{reviewer or 'a customer'}. "
                               f"Check your Reviews_Log for a draft response.")
 
             core.gmail_send(
                 gmail, cfg["gmail"]["alert_email"], cfg["gmail"]["watch_inbox"],
-                f"⚠ Negative review ({stars}★) — draft response ready",
-                f"Review from: {reviewer or 'Unknown'}\nRating: {stars}★\n\n"
+                f"⚠ Review needs attention ({stars_label}) — draft response ready",
+                f"Review from: {reviewer or 'Unknown'}\nRating: {stars_label}\n\n"
                 f"What they said:\n{snippet[:300]}\n\n"
                 f"Suggested response:\n{response_draft}\n\n"
                 f"Post your response at: https://business.google.com\n\n"
@@ -149,25 +159,20 @@ def process_review_email(gmail, cfg, msg_id):
             slack_url = cfg.get("slack", {}).get("webhook_url", "")
             if slack_url and "YOUR_" not in slack_url:
                 core.post_to_slack(slack_url,
-                    f"⚠ *Negative review ({stars}★)* from {reviewer or 'a customer'}\n"
+                    f"⚠ *Review needs attention ({stars_label})* from {reviewer or 'a customer'}\n"
                     f"{snippet[:150]}\n_Draft response ready — check your email._"
                 )
         else:
             # Save positive response as a draft
             core.gmail_send(
                 gmail, cfg["gmail"]["alert_email"], cfg["gmail"]["watch_inbox"],
-                f"✓ New {stars}★ review — response draft ready",
+                f"✓ New {stars_label} review — response draft ready",
                 f"Review from: {reviewer or 'a happy customer'}\n\n"
                 f"Suggested response to post:\n{response_draft}\n\n"
                 f"Post at: https://business.google.com\n\n"
                 f"Aether Frameworks — GAOS™ Review Monitor"
             )
 
-        # Mark as processed
-        gmail.users().messages().modify(
-            userId="me", id=msg_id,
-            body={"removeLabelIds": ["UNREAD"]}
-        ).execute()
         return True
 
     except Exception as e:
@@ -187,7 +192,7 @@ def run():
     gmail = core.connect_gmail()
     log.info("module_33_review_monitor: Watching for Google review notifications.")
     core.run_loop(lambda: scan(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":
