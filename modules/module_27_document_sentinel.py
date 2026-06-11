@@ -32,6 +32,12 @@ log = core.get_logger("document_sentinel")
 ACTIONS_TAB   = "Sentinel_Actions"
 SENTINEL_MARK = "SENTINEL_CHECKED"
 
+# Claim label: module 01 (Invoice Scanner) watches the same PDF emails,
+# so neither module may mark them read — each excludes its own label
+# instead, and the email stays unread for the owner.
+SENTINEL_LABEL = "GAOS-Sentinel"
+SENTINEL_QUERY = "is:unread has:attachment filename:pdf -label:gaos-sentinel"
+
 # Canonical Sentinel_Actions columns (must match gaos_install.TAB_HEADERS)
 ACTIONS_HEADERS = [
     "Logged At", "Source Email", "Document Type", "Obligation",
@@ -90,7 +96,7 @@ def process_new_documents(gmail, cfg):
     try:
         results = gmail.users().messages().list(
             userId="me",
-            q="is:unread has:attachment filename:pdf -label:sentinel-checked",
+            q=SENTINEL_QUERY,
             maxResults=15
         ).execute()
         messages = results.get("messages", [])
@@ -140,7 +146,7 @@ def process_new_documents(gmail, cfg):
 
             if not all_text.strip():
                 # No readable PDF text — mark and skip
-                core.gmail_label(gmail, msg["id"], "sentinel-checked")
+                core.gmail_label(gmail, msg["id"], SENTINEL_LABEL)
                 continue
 
             log.info(f"Sentinel scanning: {subject[:50]} from {from_addr[:30]}")
@@ -173,11 +179,10 @@ def process_new_documents(gmail, cfg):
             log.info(f"  → {logged} obligation(s) logged "
                      f"({sum(1 for o in obligations if o.get('priority')=='urgent')} urgent)")
 
-            # Mark as checked so we don't re-process
-            gmail.users().messages().modify(
-                userId="me", id=msg["id"],
-                body={"removeLabelIds": ["UNREAD"]}
-            ).execute()
+            # Claim with our label so we don't re-process — never mark
+            # read: module 01 still needs the unread email, and the
+            # owner should still see it in their inbox.
+            core.gmail_label(gmail, msg["id"], SENTINEL_LABEL)
             processed += 1
 
         except Exception as e:

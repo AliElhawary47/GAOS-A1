@@ -17,6 +17,12 @@ from modules import module_25_gaos_learn as learn
 
 log = core.get_logger("invoice_scanner")
 
+# Claim label: module 27 (Document Sentinel) watches the same PDF emails,
+# so neither module may mark them read — each excludes its own label
+# instead, and the email stays unread for the owner.
+SCANNED_LABEL = "GAOS-Receipts"
+INVOICE_QUERY = "is:unread has:attachment filename:pdf -label:gaos-receipts"
+
 
 def build_prompt(pdf_text):
     """The exact instruction sent to DeepSeek to read an invoice."""
@@ -84,7 +90,7 @@ def process_invoice(gmail, cfg, message_id):
     pdf_bytes, filename = core.gmail_download_pdf(gmail, message_id)
     if not pdf_bytes:
         log.warning("No PDF attachment found. Skipping.")
-        core.gmail_mark_read(gmail, message_id)
+        core.gmail_label(gmail, message_id, SCANNED_LABEL)
         return False
 
     log.info(f"Processing '{filename}' from {sender}")
@@ -92,7 +98,7 @@ def process_invoice(gmail, cfg, message_id):
     text = core.extract_pdf_text(pdf_bytes)
     if not text:
         log.warning("PDF has no readable text (scanned image?). Skipping.")
-        core.gmail_mark_read(gmail, message_id)
+        core.gmail_label(gmail, message_id, SCANNED_LABEL)
         return False
 
     # AI extraction
@@ -109,7 +115,7 @@ def process_invoice(gmail, cfg, message_id):
     # Duplicate guard: skip if same vendor+date or invoice number already logged
     if _is_duplicate(cfg, vendor, invoice_date, invoice_num):
         log.warning(f"Duplicate invoice skipped: {vendor} {invoice_date} ({invoice_num})")
-        core.gmail_mark_read(gmail, message_id)
+        core.gmail_label(gmail, message_id, SCANNED_LABEL)
         return False
 
     # Anomaly check: flag if amount is unusually high vs learned average
@@ -157,14 +163,14 @@ def process_invoice(gmail, cfg, message_id):
     core.gmail_send(gmail, cfg["gmail"]["alert_email"], cfg["gmail"]["watch_inbox"],
                     f"GAOS Invoice: {vendor}", body)
 
-    core.gmail_mark_read(gmail, message_id)
+    core.gmail_label(gmail, message_id, SCANNED_LABEL)
     return True
 
 
 
 def scan(gmail, cfg):
     """Called by gaos_engine.py each poll cycle — no loop, no sleep."""
-    emails = core.gmail_search(gmail, "is:unread has:attachment filename:pdf")
+    emails = core.gmail_search(gmail, INVOICE_QUERY)
     for e in emails:
         try:
             process_invoice(gmail, cfg, e["id"])
