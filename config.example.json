@@ -1,19 +1,21 @@
 {
-  "_comment": "GAOS™ v3.4 config (34 modules + AI failover). Copy to config.json and fill in real values. Secrets can also be set as environment variables (e.g. DEEPSEEK_API_KEY).",
+  "_comment": "GAOS™ v3.4 config (34 modules + AI failover). Copy to config.json and fill in real values. Secrets can also be set as environment variables (e.g. DEEPSEEK_API_KEY, GROQ_API_KEY).",
   "deepseek": {
     "api_key": "YOUR_DEEPSEEK_KEY_HERE",
-    "_comment": "Primary AI provider. Get key at: platform.deepseek.com  ~£2-5/month typical usage."
+    "_comment": "Optional: Primary or fallback AI provider. Get key at: platform.deepseek.com — typical usage ~£2-5/month. Leave as 'YOUR_DEEPSEEK_KEY_HERE' to disable."
   },
   "groq": {
     "api_key": "YOUR_GROQ_KEY_HERE",
-    "_comment": "FREE TIER fallback AI. Sign up at: groq.com — no credit card required. Auto-activated when DeepSeek is unavailable."
+    "_comment": "Recommended: FREE TIER fallback AI. Sign up at: groq.com — no credit card required. If both are configured, Groq is primary (it's free). Leave as 'YOUR_GROQ_KEY_HERE' to disable."
   },
   "gmail": {
     "watch_inbox": "YOUR_WATCH_INBOX@gmail.com",
-    "alert_email": "YOUR_PERSONAL_EMAIL@gmail.com"
+    "alert_email": "YOUR_PERSONAL_EMAIL@gmail.com",
+    "_comment": "watch_inbox: the Gmail account GAOS monitors. alert_email: where to send alerts."
   },
   "google_sheets": {
     "sheet_id": "YOUR_GOOGLE_SHEET_ID_HERE",
+    "_comment": "The shared Google Sheet where all module data is stored. Must be shared with the service account email.",
     "tabs": {
       "invoices":          "Invoice_Log",
       "leads":             "Lead_Log",
@@ -48,10 +50,12 @@
     "auth_token":    "YOUR_TWILIO_TOKEN_HERE",
     "from_number":   "+44XXXXXXXXXX",
     "owner_mobile":  "+44XXXXXXXXXX",
-    "whatsapp_from": "whatsapp:+14155238886"
+    "whatsapp_from": "whatsapp:+14155238886",
+    "_comment": "Twilio credentials for SMS, WhatsApp, and Voice modules. Leave placeholders to disable SMS/WhatsApp features."
   },
   "slack": {
-    "webhook_url": "YOUR_SLACK_WEBHOOK_URL_HERE"
+    "webhook_url": "YOUR_SLACK_WEBHOOK_URL_HERE",
+    "_comment": "Optional Slack integration for alerts and digests. Leave as placeholder to disable."
   },
   "business": {
     "name":                 "Client Business Name",
@@ -62,7 +66,8 @@
     "website":              "https://yourbusiness.co.uk",
     "postcode":             "LS1 4AP",
     "council_planning_url": "",
-    "type":                 "trades"
+    "type":                 "trades",
+    "_comment": "Business details used in AI prompts, emails, and conversational modules."
   },
   "active_roles": [
     "admin",
@@ -72,6 +77,7 @@
     "marketer",
     "intelligence"
   ],
+  "_active_roles_comment": "Which CUSTOMER roles this instance runs. Internal modules (25-26, 29-31, 35-36) always run on full_team. Remove roles from this list to disable them.",
   "settings": {
     "check_every_seconds":              300,
     "archive_folder":                   "gaos_archive",
@@ -83,6 +89,8 @@
   },
   "server": {
     "port":       8080,
-    "public_url": "https://your-gaos-server.up.railway.app"
+    "public_url": "https://your-gaos-server.up.railway.app",
+    "allowed_origins": [],
+    "_allowed_origins_comment": "CORS origins for embedded chatbot widget. Leave empty [] to allow all (*). Set to specific domains to restrict: ['https://example.com', 'https://app.example.com']"
   }
 }
