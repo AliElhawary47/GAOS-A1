@@ -1,5 +1,5 @@
 """
-GAOS™ AI Provider Manager  v3.2
+GAOS™ AI Provider Manager  v3.4
 ================================
 Unified interface to multiple AI providers with automatic failover.
 
@@ -112,11 +112,27 @@ class _Provider:
             self.total_cost   += (tokens / 1000) * self.cost_per_1k
             self.total_calls  += 1
             self.breaker.success()
+            self._log_usage(tokens)
             return content
         except Exception as exc:
             self.breaker.failure()
             _log.warning("[%s] %s", self.name, exc)
             return None
+
+    def _log_usage(self, tokens: int):
+        """Persists token usage to the Usage_Log sheet tab so module 36
+        (Cost Rollup) can produce monthly reports. Never raises — a
+        logging failure must not break the AI call that just succeeded."""
+        if not tokens:
+            return
+        try:
+            from gaos_core import load_config, log_usage
+            cfg = load_config()
+            if cfg.get("google_sheets", {}).get("sheet_id"):
+                log_usage(cfg, self.name, tokens,
+                          (tokens / 1000) * self.cost_per_1k)
+        except Exception:
+            pass
 
     def ask(self, prompt: str, max_tokens: int, expect_json: bool,
             system: Optional[str]) -> Optional[object]:

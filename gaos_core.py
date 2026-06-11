@@ -1,5 +1,5 @@
 """
-GAOS™ Shared Runtime Library  v3.2
+GAOS™ Shared Runtime Library  v3.4
 ====================================
 Centralised helpers used by all 33+ GAOS modules via ``import gaos_core as core``.
 
@@ -182,7 +182,9 @@ def connect_gmail():
         return None
 
 
-def gmail_send(gmail, to: str, from_addr: str, subject: str, body: str):
+def gmail_send(gmail, to: str, from_addr: str, subject: str, body: str) -> bool:
+    """Sends an email. Returns True on success, False on failure, so callers
+    can decide whether to write their 'Sent' dedupe marker."""
     try:
         msg = MIMEText(body)
         msg["to"] = to
@@ -190,8 +192,10 @@ def gmail_send(gmail, to: str, from_addr: str, subject: str, body: str):
         msg["subject"] = subject
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         gmail.users().messages().send(userId="me", body={"raw": raw}).execute()
+        return True
     except Exception as exc:
         _log.error("gmail_send failed: %s", exc)
+        return False
 
 
 def gmail_search(gmail, query: str, max_results: int = 25) -> list:
@@ -291,7 +295,7 @@ def gmail_download_pdf(gmail, message_id: str):
         return None, None
 
 
-def gmail_create_draft(gmail, to: str, subject: str, body: str):
+def gmail_create_draft(gmail, to: str, subject: str, body: str) -> bool:
     try:
         profile = gmail.users().getProfile(userId="me").execute()
         from_addr = profile.get("emailAddress", "me")
@@ -303,8 +307,10 @@ def gmail_create_draft(gmail, to: str, subject: str, body: str):
         gmail.users().drafts().create(
             userId="me", body={"message": {"raw": raw}}
         ).execute()
+        return True
     except Exception as exc:
         _log.error("gmail_create_draft failed: %s", exc)
+        return False
 
 
 def gmail_mark_read(gmail, message_id: str):
@@ -510,7 +516,8 @@ def send_sms(
     from_number: str,
     to_number: str,
     body: str,
-):
+) -> bool:
+    """Sends an SMS via Twilio. Returns True on success, False on failure."""
     try:
         url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
         requests.post(
@@ -519,8 +526,10 @@ def send_sms(
             data={"From": from_number, "To": to_number, "Body": body},
             timeout=30,
         ).raise_for_status()
+        return True
     except Exception as exc:
         _log.error("send_sms failed: %s", exc)
+        return False
 
 
 def send_whatsapp(
@@ -529,7 +538,8 @@ def send_whatsapp(
     from_number: str,
     to_number: str,
     body: str,
-):
+) -> bool:
+    """Sends a WhatsApp message via Twilio. Returns True on success."""
     try:
         if not from_number.startswith("whatsapp:"):
             from_number = f"whatsapp:{from_number}"
@@ -543,19 +553,24 @@ def send_whatsapp(
             data={"From": from_number, "To": to_number, "Body": body},
             timeout=30,
         ).raise_for_status()
+        return True
     except Exception as exc:
         _log.error("send_whatsapp failed: %s", exc)
+        return False
 
 
-def post_to_slack(webhook_url: str, message: str):
+def post_to_slack(webhook_url: str, message: str) -> bool:
+    """Posts to a Slack webhook. Returns True on success, False on failure."""
     try:
         requests.post(
             webhook_url,
             json={"text": message},
             timeout=15,
         ).raise_for_status()
+        return True
     except Exception as exc:
         _log.error("post_to_slack failed: %s", exc)
+        return False
 
 
 def extract_pdf_text(pdf_bytes: bytes) -> str:
@@ -603,6 +618,42 @@ def timestamp() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+_DATE_FORMATS = (
+    "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d",
+    "%d/%m/%y", "%d %b %Y", "%d %B %Y", "%m/%d/%Y",
+)
+
+
+def parse_date(value):
+    """Parses a user-entered sheet cell into a datetime, or None.
+
+    Sheets are edited by hand, so dates arrive as '2026-06-11',
+    '11/06/2026', '11 Jun 2026', or with a trailing time component.
+    Returns None rather than raising so one bad cell can never abort
+    a whole module run.
+    """
+    text = safe_text(value)
+    if not text:
+        return None
+    text = text.split()[0] if text[:4].isdigit() and " " in text else text
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def safe_int(value, default: int = 0) -> int:
+    """Parses a user-entered sheet cell into an int, tolerating '30 days',
+    '30.0', blanks, and junk. Returns default when nothing numeric is found."""
+    try:
+        match = re.search(r"-?\d+", str(value))
+        return int(match.group()) if match else default
+    except Exception:
+        return default
+
+
 def twiml_gather(prompt_text: str, action_url: str) -> str:
     safe_prompt = prompt_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     safe_url = action_url.replace("&", "&amp;")
@@ -636,7 +687,7 @@ _fired_slots: set = set()
 
 
 def should_run_at(hour: int, weekday: int = None, day_of_month: int = None,
-                  minute_start: int = 0, minute_window: int = 5) -> bool:
+                  minute_start: int = 0, minute_window: int = 10) -> bool:
     """
     Returns True at most ONCE per scheduled window per day (process-local).
 
@@ -644,14 +695,16 @@ def should_run_at(hour: int, weekday: int = None, day_of_month: int = None,
     weekday       — 0=Monday … 6=Sunday (None = every day)
     day_of_month  — 1-31 (None = every day; combined with weekday for e.g. 'first Monday')
     minute_start  — minute the window opens (default 0)
-    minute_window — how many minutes the window stays open (default 5)
+    minute_window — how many minutes the window stays open (default 10;
+                    must exceed the module's poll interval so a slow poll
+                    cycle can never straddle — and skip — a whole window)
 
     Examples:
-        should_run_at(8)                        → daily at 08:00–08:05
-        should_run_at(8, weekday=0)             → every Monday at 08:00–08:05
-        should_run_at(9, day_of_month=1)        → 1st of every month at 09:00–09:05
-        should_run_at(7, minute_start=30)       → daily at 07:30–07:35
-        should_run_at(7, weekday=0, minute_start=45) → every Monday at 07:45–07:50
+        should_run_at(8)                        → daily at 08:00–08:10
+        should_run_at(8, weekday=0)             → every Monday at 08:00–08:10
+        should_run_at(9, day_of_month=1)        → 1st of every month at 09:00–09:10
+        should_run_at(7, minute_start=30)       → daily at 07:30–07:40
+        should_run_at(7, weekday=0, minute_start=45) → every Monday at 07:45–07:55
 
     Reliability notes:
       * Double-fire protection — once a slot returns True it cannot return

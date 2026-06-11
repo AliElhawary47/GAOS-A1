@@ -191,9 +191,25 @@ def _voice():
 
 # ── Routes ───────────────────────────────────────────────────────
 
+@app.route("/", methods=["GET"])
+def index():
+    """Friendly landing response so the deployed root URL isn't a 404."""
+    return jsonify({
+        "service": "GAOS Web Server",
+        "status": "ok",
+        "endpoints": ["/health", "/chat", "/whatsapp", "/voice",
+                      "/voice/handle", "/widget.js"],
+    })
+
+
 @app.route("/health", methods=["GET"])
 def health():
     current = _get_cfg()
+    try:
+        import gaos_ai
+        ai_status = gaos_ai.get_ai_status()
+    except Exception:
+        ai_status = {"active_provider": "unknown", "providers": []}
     return jsonify({
         "status": "ok",
         "modules": {
@@ -204,6 +220,7 @@ def health():
         "config_loaded": bool(current),
         "config_source": core.config_source(),
         "gmail_connected": gmail is not None,  # lazy — None until first use
+        "ai": ai_status,
     })
 
 

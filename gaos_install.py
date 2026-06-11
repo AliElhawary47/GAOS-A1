@@ -1,5 +1,5 @@
 """
-GAOS™ Industry Pack Installer  v3.2
+GAOS™ Industry Pack Installer  v3.4
 =====================================
 Reads industry_packs.json and provisions all required Google Sheet tabs,
 pre-populates the FAQ knowledge base, seeds licence/compliance items,
@@ -25,32 +25,37 @@ import gaos_core as core
 
 PACKS_FILE = Path(__file__).parent / "industry_packs.json"
 
-# Default column headers for each standard sheet tab
+# Canonical column headers for every sheet tab.
+# THIS IS THE SINGLE SOURCE OF TRUTH for sheet schemas — every module
+# reads and writes these exact column names. If you change a header
+# here, change every module that touches that tab.
 TAB_HEADERS = {
     "Invoice_Log":             ["Invoice ID", "Client", "Client Email", "Amount", "Invoice Date", "Status", "Chase Sent", "Notes"],
-    "Lead_Log":                ["Date", "From", "Email", "Subject", "Summary", "Status", "Chase Sent"],
-    "Completed_Jobs":          ["Date", "Client", "Email", "Service", "Status", "Review Sent"],
-    "Contract_Log":            ["Date", "Client", "Email", "Service", "Status", "Contract Sent"],
+    "Lead_Log":                ["Date", "From", "Email", "Subject", "Summary", "Status", "Chase Sent", "Source"],
+    "Completed_Jobs":          ["Date", "Client", "Email", "Phone", "Service", "Status", "Review Sent"],
+    "Contract_Log":            ["Date", "Client", "Email", "Service", "Fee", "Status", "Contract Sent"],
     "FAQ_Knowledge_Base":      ["Question", "Answer", "Category"],
-    "Appointments":            ["Date", "Time", "Client", "Email", "Phone", "Service", "Status", "Reminder Sent", "No_Show_Sent"],
+    "FAQ_Gaps":                ["Subject", "Question", "From", "Logged At"],
+    "Appointments":            ["Date", "Time", "Client", "Email", "Phone", "Service", "Status", "24h Sent", "2h Sent", "No_Show_Sent"],
     "Proposals":               ["Proposal Date", "Client Name", "Client Email", "Value", "Status", "Chase Sent"],
     "Pending_Documents":       ["Requested Date", "Client Name", "Email", "Document", "Received", "Chased"],
-    "Clients":                 ["Name", "Email", "Phone", "Type", "Last Contact", "Notes"],
+    "Clients":                 ["Name", "Email", "Phone", "Type", "Status", "Last Contact", "Birthday", "Anniversary", "Last Birthday Mail", "Last Anniversary Mail", "Re-Engaged", "Notes"],
     "Retainer_Clients":        ["Name", "Email", "Amount", "Billing Day", "Status", "Last Invoice"],
     "Licences":                ["Description", "Expiry Date", "Alert Days Before", "Status", "Last Alerted"],
     "Timesheets":              ["Week Ending", "Employee", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Total Hours", "Notes"],
     "Chatbot_Knowledge":       ["Question", "Answer", "Category"],
-    "Sentinel_Actions":        ["Date", "Document", "Action", "Notes"],
+    "Sentinel_Actions":        ["Logged At", "Source Email", "Document Type", "Obligation", "Deadline Date", "Priority", "Status"],
     "Gazette_Hits":            ["Date", "Company", "Notice Type", "Details", "Actioned"],
     "Land_Registry_Leads":     ["Date", "Address", "Price", "Buyer", "Seller", "Status", "Notes"],
     "Macro_Log":               ["Date", "Type", "Value", "Change", "Notes"],
-    "Newsletter_Queue":        ["Name", "Email", "Status"],
-    "Reviews_Log":             ["Date", "Platform", "Rating", "Review", "Actioned"],
+    "Newsletter_Queue":        ["Month", "Topics", "Tone", "Status", "Sent At"],
+    "Reviews_Log":             ["Date", "Platform", "Reviewer", "Stars", "Review", "Draft Reply", "Actioned"],
     "Campaign_Log":            ["Date", "Campaign", "Sent", "Opens", "Clicks", "Replies", "Notes"],
-    "GAOS_Memory":             ["Date", "Category", "Key", "Value", "Source"],
+    "GAOS_Memory":             ["Key", "Value", "Updated"],
     "Client_Pulse_Log":        ["Client", "Email", "Last Contact", "Days Silence", "Status", "Actioned"],
     "Actions_Log":             ["Timestamp", "Module", "Action", "Status", "Detail"],
     "Usage_Log":               ["Timestamp", "Module", "Tokens", "Cost GBP"],
+    "Social_Queue":            ["Scheduled Date", "Platform", "Raw Idea", "Status", "Post Draft", "Sent At"],
     # Pack-specific tabs
     "Job_Log":                 ["Date", "Client", "Description", "Status", "Engineer", "Invoice Ref"],
     "Material_Quotes":         ["Date", "Supplier", "Item", "Quantity", "Unit Cost", "Total", "Status"],
@@ -64,8 +69,26 @@ TAB_HEADERS = {
     "Viewings_Log":            ["Date", "Time", "Property", "Applicant", "Email", "Phone", "Status"],
     "Tax_Deadlines":           ["Description", "Due Date", "Client", "Status", "Actioned"],
     "Recurring_Billing":       ["Client", "Email", "Amount", "Frequency", "Next Bill Date", "Status"],
-    "Social_Queue":            ["Scheduled Date", "Platform", "Caption", "Image URL", "Status"],
 }
+
+# Tabs every GAOS install needs regardless of industry pack — audit logs,
+# AI memory, usage tracking, and the Zone 0/6/7 output tabs. Created on
+# every install in addition to the pack's own sheet_tabs.
+CORE_TABS = [
+    "Actions_Log",
+    "Usage_Log",
+    "GAOS_Memory",
+    "FAQ_Gaps",
+    "Sentinel_Actions",
+    "Gazette_Hits",
+    "Land_Registry_Leads",
+    "Macro_Log",
+    "Newsletter_Queue",
+    "Reviews_Log",
+    "Campaign_Log",
+    "Client_Pulse_Log",
+    "Social_Queue",
+]
 
 
 def load_packs() -> dict:
@@ -177,6 +200,11 @@ def install_pack(pack_key: str):
 
     print("  [1/5] Creating sheet tabs...")
     _create_tabs(sheet_id, pack["sheet_tabs"])
+    core_tabs = {t.lower(): t for t in CORE_TABS
+                 if t not in pack["sheet_tabs"].values()}
+    if core_tabs:
+        print("       …plus core system tabs:")
+        _create_tabs(sheet_id, core_tabs)
 
     faq_tab = pack["sheet_tabs"].get("faq", "FAQ_Knowledge_Base")
     print(f"\n  [2/5] Seeding {faq_tab}...")
@@ -232,7 +260,7 @@ def main():
     args = parser.parse_args()
 
     print("\n" + "═" * 60)
-    print("  GAOS™ v3.2 — Industry Pack Installer")
+    print("  GAOS™ v3.4 — Industry Pack Installer")
     print("  Aether Frameworks")
     print("═" * 60)
 
