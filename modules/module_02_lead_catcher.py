@@ -50,6 +50,7 @@ def process_lead(gmail, cfg, message_id):
 
     headers, msg = core.gmail_get_message(gmail, message_id)
     sender       = headers.get("From", "Unknown")
+    subject      = headers.get("Subject", "")
     body_text    = core.gmail_get_body_text(msg)
 
     if not body_text:
@@ -77,18 +78,20 @@ def process_lead(gmail, cfg, message_id):
     log.info(f"Reply draft saved to Gmail. Lead score: {score}")
 
     # Log lead to Sheets (score stored in Status column for CoS hot-lead detection)
+    # Canonical Lead_Log columns: Date | From | Email | Subject | Summary | Status | Chase Sent | Source
     core.sheets_append_row(
         cfg["google_sheets"]["sheet_id"],
         cfg["google_sheets"]["tabs"]["leads"],
-        [lead_name, sender, enquiry, score, core.timestamp()]
+        [core.timestamp(), lead_name, sender, subject, enquiry, score, "", ""]
     )
 
     # Ping the owner on WhatsApp — flag Hot leads prominently
     tw = cfg["twilio"]
     if "YOUR_" not in tw["account_sid"]:
         prefix = "🔥 HOT LEAD" if score == "Hot" else "New lead"
+        wa_from = tw.get("whatsapp_from") or tw["from_number"]
         core.send_whatsapp(
-            tw["account_sid"], tw["auth_token"], tw["from_number"], tw["owner_mobile"],
+            tw["account_sid"], tw["auth_token"], wa_from, tw["owner_mobile"],
             f"{prefix}: {lead_name} — {enquiry}. A reply draft is ready in your inbox."
         )
         log.info("WhatsApp alert sent to owner.")

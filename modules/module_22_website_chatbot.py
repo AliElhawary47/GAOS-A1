@@ -35,7 +35,10 @@ def _store_history(session_id, history):
     _conversations.pop(session_id, None)   # re-insert → moves to newest
     _conversations[session_id] = history[-MAX_HISTORY:]
     while len(_conversations) > MAX_SESSIONS:
-        _conversations.pop(next(iter(_conversations)))
+        try:
+            _conversations.pop(next(iter(_conversations)), None)
+        except StopIteration:  # racing eviction emptied the dict already
+            break
 
 
 
@@ -71,12 +74,17 @@ def detect_and_log_lead(cfg, session_id, user_message, history):
         max_tokens=100
     ) or {}
 
+    # Canonical Lead_Log order:
+    # [Date, From, Email, Subject, Summary, Status, Chase Sent, Source]
     core.sheets_append_row(
         cfg["google_sheets"]["sheet_id"],
         cfg["google_sheets"]["tabs"].get("leads", "Lead_Log"),
-        [core.safe_text(data.get("Name"), "Website visitor"), email,
+        [core.timestamp(),
+         core.safe_text(data.get("Name"), "Website visitor"),
+         email,
+         "Website chat enquiry",
          core.safe_text(data.get("Interest"), "Website chat enquiry"),
-         "Chatbot Lead", core.timestamp()]
+         "Chatbot Lead", "", ""]
     )
     log.info(f"Chatbot captured lead: {email}")
 

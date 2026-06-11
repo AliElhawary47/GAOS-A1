@@ -42,8 +42,14 @@ def get_week_totals(rows, week_start, week_end):
     total = 0.0
     count = 0
     for row in rows:
-        logged = str(row.get("Logged At", ""))[:10]
-        if week_start <= logged <= week_end:
+        # "Received" rows are supplier invoices logged by module 01 — not revenue
+        if str(row.get("Status", "")).strip().lower() == "received":
+            continue
+        inv_dt = core.parse_date(row.get("Invoice Date", ""))
+        if not inv_dt:
+            continue
+        invoiced = inv_dt.strftime("%Y-%m-%d")
+        if week_start <= invoiced <= week_end:
             total += parse_amount(row.get("Amount", "0"))
             count += 1
     return total, count

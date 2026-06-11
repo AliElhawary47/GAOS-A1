@@ -48,9 +48,9 @@ def _is_duplicate(cfg, vendor: str, invoice_date: str, invoice_number: str) -> b
         vendor_l  = vendor.lower()
         inv_num_l = invoice_number.lower()
         for row in rows:
-            row_vendor = str(row.get("VendorName","")).strip().lower()
-            row_date   = str(row.get("InvoiceDate","")).strip()
-            row_num    = str(row.get("InvoiceNumber","")).strip().lower()
+            row_vendor = str(row.get("Client","")).strip().lower()
+            row_date   = str(row.get("Invoice Date","")).strip()
+            row_num    = str(row.get("Invoice ID","")).strip().lower()
             if row_vendor == vendor_l and row_date == invoice_date:
                 return True
             if inv_num_l not in ("", "not found") and row_num == inv_num_l:
@@ -117,18 +117,23 @@ def process_invoice(gmail, cfg, message_id):
     if notes:
         log.warning(f"Invoice anomaly: {vendor} {total_amount} — {notes}")
 
-    # Log to Sheets (includes InvoiceNumber and Notes columns)
+    # Log to Sheets — canonical Invoice_Log columns:
+    # Invoice ID | Client | Client Email | Amount | Invoice Date | Status | Chase Sent | Notes
+    # Status "Received" = supplier invoice WE received; module 08 must never chase these.
+    email_match  = re.search(r"[\w.+-]+@[\w.-]+", sender)
+    sender_email = email_match.group(0) if email_match else sender
+    invoice_id   = "" if invoice_num.lower() in ("", "not found", "n/a") else invoice_num
     core.sheets_append_row(
         cfg["google_sheets"]["sheet_id"],
         cfg["google_sheets"]["tabs"]["invoices"],
         [
+            invoice_id,
             vendor,
-            invoice_date,
+            sender_email,
             total_amount,
-            core.safe_text(data.get("TaxAmount")),
-            invoice_num,
-            sender,
-            core.timestamp(),
+            invoice_date,
+            "Received",
+            "",
             notes,
         ]
     )

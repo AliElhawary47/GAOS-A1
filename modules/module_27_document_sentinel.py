@@ -32,9 +32,10 @@ log = core.get_logger("document_sentinel")
 ACTIONS_TAB   = "Sentinel_Actions"
 SENTINEL_MARK = "SENTINEL_CHECKED"
 
+# Canonical Sentinel_Actions columns (must match gaos_install.TAB_HEADERS)
 ACTIONS_HEADERS = [
-    "Source Email", "Document Type", "Obligation",
-    "Deadline Date", "Priority", "Status", "Logged At"
+    "Logged At", "Source Email", "Document Type", "Obligation",
+    "Deadline Date", "Priority", "Status"
 ]
 
 SENTINEL_PROMPT = """You are a legal obligation scanner for a small business.
@@ -110,22 +111,32 @@ def process_new_documents(gmail, cfg):
             from_addr = headers.get("From", "unknown")
             subject   = headers.get("Subject", "no subject")
 
-            # Extract text from all PDF attachments
+            # Extract text from all PDF attachments, recursing into nested
+            # MIME containers (HTML emails wrap attachments in multipart/*)
+            def _iter_parts(payload):
+                yield payload
+                for sub in payload.get("parts", []):
+                    yield from _iter_parts(sub)
+
             all_text = ""
-            parts    = detail["payload"].get("parts", [])
-            for part in parts:
-                if "pdf" in part.get("mimeType", ""):
-                    att_id = part.get("body", {}).get("attachmentId")
-                    if att_id:
-                        att  = gmail.users().messages().attachments().get(
-                            userId="me", messageId=msg["id"], id=att_id
-                        ).execute()
-                        data = att.get("data", "")
-                        if data:
-                            import base64, io
-                            raw   = base64.urlsafe_b64decode(data)
-                            text  = core.extract_pdf_text(io.BytesIO(raw))
-                            all_text += text + "\n"
+            for part in _iter_parts(detail["payload"]):
+                filename = part.get("filename", "")
+                is_pdf = ("pdf" in part.get("mimeType", "")
+                          or filename.lower().endswith(".pdf"))
+                if not is_pdf:
+                    continue
+                att_id = part.get("body", {}).get("attachmentId")
+                if not att_id:
+                    continue
+                att  = gmail.users().messages().attachments().get(
+                    userId="me", messageId=msg["id"], id=att_id
+                ).execute()
+                data = att.get("data", "")
+                if data:
+                    import base64
+                    # "==" pad: Gmail returns unpadded base64url
+                    raw  = base64.urlsafe_b64decode(data + "==")
+                    all_text += core.extract_pdf_text(raw) + "\n"
 
             if not all_text.strip():
                 # No readable PDF text — mark and skip
@@ -146,8 +157,8 @@ def process_new_documents(gmail, cfg):
                     continue
 
                 core.sheets_append_row(sheet_id, ACTIONS_TAB, [
-                    from_addr, subject, obligation,
-                    deadline, priority, "Open", core.timestamp()
+                    core.timestamp(), from_addr, subject, obligation,
+                    deadline, priority, "Open"
                 ])
                 logged += 1
 
@@ -209,18 +220,8 @@ def _send_urgent_alert(gmail, cfg, items):
 
 def ensure_actions_tab(cfg):
     """Creates the Sentinel_Actions tab if it doesn't exist."""
-    try:
-        core.sheets_read_all(cfg["google_sheets"]["sheet_id"], ACTIONS_TAB)
-    except Exception:
-        try:
-            import gspread
-            gc = gspread.service_account(filename="google_credentials.json")
-            ss = gc.open_by_key(cfg["google_sheets"]["sheet_id"])
-            tab = ss.add_worksheet(title=ACTIONS_TAB, rows=200, cols=7)
-            tab.append_row(ACTIONS_HEADERS)
-            log.info(f"Created {ACTIONS_TAB} tab")
-        except Exception as e:
-            log.error(f"Could not create {ACTIONS_TAB} tab: {e}")
+    core.sheets_find_or_create_tab(cfg["google_sheets"]["sheet_id"],
+                                   ACTIONS_TAB, ACTIONS_HEADERS)
 
 
 def run():
@@ -229,7 +230,7 @@ def run():
     ensure_actions_tab(cfg)
     log.info("module_27_document_sentinel: Watching for incoming documents.")
     core.run_loop(lambda: process_new_documents(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

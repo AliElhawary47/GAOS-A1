@@ -23,7 +23,12 @@ DIGEST_HOUR = 8   # send at 8:00am
 
 def count_todays_rows(rows, date_col_name, target_date_str):
     """Count rows that were logged on the target date."""
-    return sum(1 for r in rows if str(r.get(date_col_name, "")).startswith(target_date_str))
+    count = 0
+    for r in rows:
+        dt = core.parse_date(r.get(date_col_name, ""))
+        if dt and dt.strftime("%Y-%m-%d") == target_date_str:
+            count += 1
+    return count
 
 
 def build_digest_prompt(summary_data, business_name):
@@ -52,10 +57,10 @@ def generate_digest(gmail, cfg):
     summary_parts = [f"Date: {yesterday}", f"Business: {business}", ""]
 
     tab_map = {
-        "invoices": ("Invoice_Log",  "Logged At",  "Invoices received"),
-        "leads":    ("Lead_Log",     "Logged At",  "New leads"),
-        "reviews":  ("Completed_Jobs","Logged At", "Jobs completed"),
-        "contracts":("Contract_Log", "Logged At",  "Contracts sent"),
+        "invoices": ("Invoice_Log",  "Invoice Date", "Invoices received"),
+        "leads":    ("Lead_Log",     "Date",         "New leads"),
+        "reviews":  ("Completed_Jobs","Date",        "Jobs completed"),
+        "contracts":("Contract_Log", "Date",         "Contracts sent"),
     }
 
     for key, (default_tab, date_col, label) in tab_map.items():

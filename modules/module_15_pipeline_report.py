@@ -20,11 +20,8 @@ REPORT_WEEKDAY = 4   # Friday = 4
 
 
 def days_since(date_str):
-    try:
-        dt = datetime.strptime(date_str[:10], "%Y-%m-%d")
-        return (datetime.now() - dt).days
-    except Exception:
-        return 0
+    dt = core.parse_date(date_str)
+    return (datetime.now() - dt).days if dt else 0
 
 
 def generate_pipeline_report(gmail, cfg):
@@ -37,11 +34,11 @@ def generate_pipeline_report(gmail, cfg):
         return
 
     total       = len(rows)
-    open_leads  = [r for r in rows if str(r.get("Status","")).lower() not in ("closed","won","lost")]
+    open_leads  = [r for r in rows if str(r.get("Status","")).lower() not in ("converted","closed-won","won","closed","lost")]
     won         = [r for r in rows if str(r.get("Status","")).lower() in ("won","converted","closed-won")]
     no_reply    = [r for r in open_leads if str(r.get("Status","")).lower() in ("","new","draft ready")]
 
-    oldest_days = max((days_since(str(r.get("Logged At",""))) for r in open_leads), default=0)
+    oldest_days = max((days_since(str(r.get("Date",""))) for r in open_leads), default=0)
 
     prompt = (
         f"Write a concise Friday pipeline summary for {cfg['business']['name']}.\n"

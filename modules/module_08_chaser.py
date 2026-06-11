@@ -17,9 +17,12 @@ A duplicate-send guard searches Gmail sent folder before every chase
 to prevent accidental double-chasing if the owner already emailed manually.
 
 Sheets required:
-  Invoice_Log       — Vendor | Invoice Date | Amount | ... | Status | Chase Sent
-  Proposals         — Client Name | Client Email | Proposal Date | Value | Status | Chase Sent
-  Pending_Documents — Client Name | Client Email | Document Required | Requested Date | Received | Chased
+  Invoice_Log       — Invoice ID | Client | Client Email | Amount | Invoice Date | Status | Chase Sent | Notes
+  Proposals         — Proposal Date | Client Name | Client Email | Value | Status | Chase Sent
+  Pending_Documents — Requested Date | Client Name | Email | Document | Received | Chased
+
+Only invoices the business ISSUED are chased — rows with Status
+"Received" are supplier invoices logged by module 01 and are skipped.
 """
 
 import re
@@ -48,7 +51,7 @@ log = core.get_logger("item_chaser")
 # ── EMAIL BUILDERS ────────────────────────────────────────────────
 
 def build_payment_email(row: dict, cfg: dict, level: int = 1) -> Tuple[str, str]:
-    vendor  = core.safe_text(row.get("Vendor"), "there")
+    vendor  = core.safe_text(row.get("Client"), "there")
     amount  = core.safe_text(row.get("Amount"), "the outstanding amount")
     date    = core.safe_text(row.get("Invoice Date"), "recently")
     biz     = cfg["business"]["name"]
@@ -112,7 +115,7 @@ def build_proposal_email(row: dict, cfg: dict) -> Tuple[str, str]:
 
 def build_document_email(row: dict, cfg: dict) -> Tuple[str, str]:
     client = core.safe_text(row.get("Client Name"), "there")
-    doc    = core.safe_text(row.get("Document Required"), "outstanding document")
+    doc    = core.safe_text(row.get("Document"), "outstanding document")
     biz    = cfg["business"]["name"]
     subject = f"Outstanding document request: {doc}"
     body = (
@@ -153,10 +156,11 @@ CHASERS = [
         tab_key         = "invoices",
         date_col        = "Invoice Date",
         status_col      = "Status",
-        done_values     = ("paid", "cancelled", "void"),
+        # "received" = supplier invoice logged by module 01 — never chase those
+        done_values     = ("paid", "cancelled", "void", "received"),
         chase_col       = "Chase Sent",
-        email_col       = "Source Email",
-        name_col        = "Vendor",
+        email_col       = "Client Email",
+        name_col        = "Client",
         days            = 14,
         build_email     = build_payment_email,
         escalate        = True,
@@ -181,7 +185,7 @@ CHASERS = [
         status_col  = "Received",
         done_values = ("yes", "received", "✓"),
         chase_col   = "Chased",
-        email_col   = "Client Email",
+        email_col   = "Email",
         name_col    = "Client Name",
         days        = 3,
         build_email = build_document_email,
@@ -230,9 +234,8 @@ def check_and_chase(gmail, cfg, chaser: ChaseConfig, late_payers: List[str] = No
         if status in chaser.done_values or not email:
             continue
 
-        try:
-            item_date = datetime.strptime(date_str[:10], "%Y-%m-%d")
-        except ValueError:
+        item_date = core.parse_date(date_str)
+        if not item_date:
             continue
 
         days_elapsed = (days_now - item_date).days
@@ -271,9 +274,11 @@ def check_and_chase(gmail, cfg, chaser: ChaseConfig, late_payers: List[str] = No
             subject, body = chaser.build_email(row, cfg)
             mark = "Sent"
 
-        core.gmail_send(gmail, email, cfg["gmail"]["watch_inbox"], subject, body)
-        core.sheets_update_cell(sheet_id, tab, i + 2, chaser.chase_col, mark)
-        sent += 1
+        if core.gmail_send(gmail, email, cfg["gmail"]["watch_inbox"], subject, body):
+            core.sheets_update_cell(sheet_id, tab, i + 2, chaser.chase_col, mark)
+            sent += 1
+        else:
+            log.warning(f"[{chaser.name}] send to {email} failed — will retry next poll")
 
     return sent
 
@@ -301,7 +306,7 @@ def run():
     log.info("Unified Item Chaser active — payments, proposals, documents.")
     core.run_loop(
         lambda: run_all_chasers(gmail, cfg),
-        cfg["settings"]["check_every_seconds"]
+        cfg.get("settings", {}).get("check_every_seconds", 300)
     )
 
 

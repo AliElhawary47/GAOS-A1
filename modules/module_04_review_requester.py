@@ -14,9 +14,9 @@
 
 How it works:
   The client keeps a sheet (tab: Completed_Jobs) with columns:
-    A: Customer Name | B: Mobile | C: Status | D: Review Sent?
-  When Status = "Completed" and Review Sent? is blank,
-  GAOS sends the review request and marks column D as "Sent".
+    Date | Client | Email | Phone | Service | Status | Review Sent
+  When Status = "Completed" and Review Sent is blank,
+  GAOS sends the review request and marks "Review Sent" as "Sent".
 """
 
 import gaos_core as core
@@ -33,7 +33,7 @@ def build_message(customer_name, business_name, review_link):
     )
 
 
-def check_completed_jobs(cfg):
+def check_completed_jobs(cfg, gmail=None):
     """Reads the jobs sheet and sends review requests for new completions."""
     sheet_id = cfg["google_sheets"]["sheet_id"]
     tab      = cfg["google_sheets"]["tabs"]["reviews"]
@@ -51,36 +51,57 @@ def check_completed_jobs(cfg):
     # Row 1 is headers, so sheet row = index + 2
     for i, row in enumerate(rows):
         status      = str(row.get("Status", "")).strip().lower()
-        already     = str(row.get("Review Sent?", "")).strip().lower()
-        customer    = str(row.get("Customer Name", "")).strip()
-        mobile      = str(row.get("Mobile", "")).strip()
+        already     = str(row.get("Review Sent", "")).strip().lower()
+        customer    = str(row.get("Client", "")).strip()
+        mobile      = str(row.get("Phone", "")).strip()
+        email       = str(row.get("Email", "")).strip()
 
-        if status == "completed" and already != "sent" and mobile:
-            message = build_message(customer or "there", business, review_link)
+        if status != "completed" or already == "sent":
+            continue
 
+        message = build_message(customer or "there", business, review_link)
+        ok = False
+
+        if mobile:
             if "YOUR_" in tw["account_sid"]:
+                # Don't mark the row — the customer still gets their request
+                # once Twilio is configured.
                 log.warning(f"Twilio not configured — would text {customer}: {message}")
+                continue
+            ok = core.send_sms(tw["account_sid"], tw["auth_token"],
+                               tw["from_number"], mobile, message)
+            if ok:
+                log.info(f"Review request sent to {customer} ({mobile}).")
             else:
-                ok = core.send_sms(tw["account_sid"], tw["auth_token"],
-                                   tw["from_number"], mobile, message)
-                if ok:
-                    log.info(f"Review request sent to {customer} ({mobile}).")
-                    sent_count += 1
-                else:
-                    log.error(f"Failed to text {customer}.")
-                    continue
+                log.error(f"Failed to text {customer}.")
+        elif email:
+            if gmail is None:
+                gmail = core.connect_gmail()
+            if gmail is None:
+                log.error(f"No phone for {customer} and Gmail unavailable — skipping.")
+                continue
+            ok = core.gmail_send(gmail, email, cfg["gmail"]["watch_inbox"],
+                                 f"How did we do, {customer or 'there'}?", message)
+            if ok:
+                log.info(f"Review request emailed to {customer} ({email}).")
+            else:
+                log.error(f"Failed to email {customer}.")
+        else:
+            continue
 
-            # Mark column D ("Review Sent?") as Sent — column 4
-            sheet_row = i + 2
-            core.sheets_update_cell(sheet_id, tab, sheet_row, 4, "Sent")
+        if ok:
+            # Mark "Review Sent" (by header name) only after a confirmed send
+            core.sheets_update_cell(sheet_id, tab, i + 2, "Review Sent", "Sent")
+            sent_count += 1
 
     return sent_count
 
 
 def run():
     cfg = core.load_config()
+    gmail = core.connect_gmail()
     log.info("module_04_review_requester: Watching for completed jobs.")
-    core.run_loop(lambda: check_completed_jobs(cfg),
+    core.run_loop(lambda: check_completed_jobs(cfg, gmail),
                   cfg["settings"]["check_every_seconds"])
 
 

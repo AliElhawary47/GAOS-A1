@@ -25,26 +25,35 @@ log = core.get_logger("team_broadcaster")
 _AMOUNT_RE = re.compile(r'[£$€]\s*[\d,]+(?:\.\d{2})?')
 
 
+GAOS_BROADCAST_LABEL = "GAOS-Broadcast"
+
+
 # Define the events GAOS watches for and how to label them in Slack.
 # Each trigger maps a Gmail search to a Slack message style.
+# "mark_read" — whether this trigger may also mark the email read after a
+# successful post. big_lead must NOT: module 03 still needs the unread
+# "quote" email to fire its SMS alert; the label alone stops reprocessing.
 EVENT_TRIGGERS = [
     {
         "name":  "payment",
-        "query": 'is:unread (from:stripe.com OR subject:"payment received" OR subject:"you have been paid")',
+        "query": 'is:unread -label:gaos-broadcast (from:stripe.com OR subject:"payment received" OR subject:"you have been paid")',
         "emoji": "💰",
         "title": "Payment Received",
+        "mark_read": True,
     },
     {
         "name":  "new_client",
-        "query": 'is:unread (subject:"contract signed" OR subject:"agreement accepted")',
+        "query": 'is:unread -label:gaos-broadcast (subject:"contract signed" OR subject:"agreement accepted")',
         "emoji": "🎉",
         "title": "New Client Signed",
+        "mark_read": True,
     },
     {
         "name":  "big_lead",
-        "query": 'is:unread (subject:quote OR subject:"large enquiry")',
+        "query": 'is:unread -label:gaos-broadcast (subject:quote OR subject:"large enquiry")',
         "emoji": "🔔",
         "title": "New Lead",
+        "mark_read": False,
     },
 ]
 
@@ -94,12 +103,19 @@ def process_events(gmail, cfg):
 
             if "YOUR_" in webhook:
                 log.warning(f"Slack not configured — would post: {message}")
-            else:
-                if core.post_to_slack(webhook, message):
-                    log.info(f"Posted to Slack: {trigger['title']}")
-                    posted += 1
+                # Claim with a label so we don't re-summarise it every poll
+                core.gmail_label(gmail, e["id"], GAOS_BROADCAST_LABEL)
+                continue
 
-            core.gmail_mark_read(gmail, e["id"])
+            if core.post_to_slack(webhook, message):
+                log.info(f"Posted to Slack: {trigger['title']}")
+                posted += 1
+                core.gmail_label(gmail, e["id"], GAOS_BROADCAST_LABEL)
+                if trigger.get("mark_read"):
+                    core.gmail_mark_read(gmail, e["id"])
+            else:
+                # Leave unlabelled and unread so the next poll retries the post
+                log.warning(f"Slack post failed for {trigger['title']} — will retry.")
 
     return posted
 
