@@ -29,8 +29,17 @@ except ImportError:
 log = core.get_logger("whatsapp_agent")
 
 _conversations = {}        # keyed by sender phone number
-MAX_HISTORY = 10
+MAX_HISTORY  = 10
+MAX_SESSIONS = 500         # evict oldest senders beyond this (memory cap)
 ESCALATE_FLAG = "[ESCALATE]"
+
+
+def _store_history(sender, history):
+    """Saves a sender's history, evicting the oldest when the cap is hit."""
+    _conversations.pop(sender, None)
+    _conversations[sender] = history[-MAX_HISTORY:]
+    while len(_conversations) > MAX_SESSIONS:
+        _conversations.pop(next(iter(_conversations)))
 
 
 
@@ -105,7 +114,7 @@ def handle_message(cfg, sender, body):
         reply += "\n\nI've let our team know — someone will be in touch very soon."
 
     history.append({"role": "assistant", "content": reply})
-    _conversations[sender] = history[-MAX_HISTORY:]
+    _store_history(sender, history)
     return reply
 
 

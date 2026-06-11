@@ -24,7 +24,18 @@ log = core.get_logger("website_chatbot")
 # In-memory conversation store keyed by session id.
 # For a small business this is fine; transcripts are logged to Sheets.
 _conversations = {}
-MAX_HISTORY = 10   # keep last N turns per session
+MAX_HISTORY  = 10    # keep last N turns per session
+MAX_SESSIONS = 500   # evict oldest sessions beyond this (prevents unbounded
+                     # memory growth on a long-lived server hit by bots)
+
+
+def _store_history(session_id, history):
+    """Saves a session's history, evicting the oldest sessions when full.
+    Python dicts preserve insertion order, so the first key is the oldest."""
+    _conversations.pop(session_id, None)   # re-insert → moves to newest
+    _conversations[session_id] = history[-MAX_HISTORY:]
+    while len(_conversations) > MAX_SESSIONS:
+        _conversations.pop(next(iter(_conversations)))
 
 
 
@@ -90,7 +101,7 @@ def handle_message(cfg, session_id, user_message):
     )
 
     history.append({"role": "assistant", "content": reply})
-    _conversations[session_id] = history[-MAX_HISTORY:]
+    _store_history(session_id, history)
 
     # Capture lead if an email appeared
     detect_and_log_lead(cfg, session_id, user_message, history)

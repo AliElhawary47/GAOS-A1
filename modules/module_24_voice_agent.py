@@ -24,6 +24,20 @@ log = core.get_logger("voice_agent")
 
 _calls = {}          # keyed by Twilio CallSid → conversation history
 MAX_TURNS = 8
+MAX_CALLS = 200      # evict oldest call histories beyond this (memory cap —
+                     # entries are also freed explicitly when a call ends)
+
+
+def _end_call(call_sid):
+    """Frees a finished call's history."""
+    _calls.pop(call_sid, None)
+
+
+def _store_call(call_sid, history):
+    _calls.pop(call_sid, None)
+    _calls[call_sid] = history[-MAX_TURNS:]
+    while len(_calls) > MAX_CALLS:
+        _calls.pop(next(iter(_calls)))
 
 
 
@@ -61,6 +75,7 @@ def handle_turn(cfg, call_sid, caller_number, speech_text):
     history = _calls.get(call_sid, [])
 
     if not speech_text:
+        _end_call(call_sid)
         return core.twiml_say_hangup(
             "Sorry, I didn't catch that. Please call back. Goodbye."
         )
@@ -75,7 +90,7 @@ def handle_turn(cfg, call_sid, caller_number, speech_text):
     )
 
     history.append({"role": "assistant", "content": reply})
-    _calls[call_sid] = history[-MAX_TURNS:]
+    _store_call(call_sid, history)
 
     base = cfg.get("server", {}).get("public_url", "")
 
@@ -83,6 +98,7 @@ def handle_turn(cfg, call_sid, caller_number, speech_text):
     if "[END]" in reply or len(history) >= MAX_TURNS * 2:
         clean = reply.replace("[END]", "").strip()
         send_call_summary(cfg, caller_number, history)
+        _end_call(call_sid)
         return core.twiml_say_hangup(
             f"{clean} Thank you for calling. Goodbye."
         )

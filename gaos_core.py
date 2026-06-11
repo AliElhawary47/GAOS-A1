@@ -48,12 +48,42 @@ _sheets_client = None
 
 
 def load_config(path="config.json") -> dict:
+    """Loads config.json from disk; falls back to the GAOS_CONFIG_JSON env var.
+
+    Cloud deployment (Railway/Oracle): config.json is gitignored and never
+    present on the server.  Paste the full JSON into a single environment
+    variable named GAOS_CONFIG_JSON instead — it is parsed identically.
+    Local development: the file always wins when it exists.
+    """
     try:
         with open(path, "r", encoding="utf-8") as fh:
             return json.load(fh)
+    except FileNotFoundError:
+        pass  # normal in cloud deploys — fall through to env var
     except Exception as exc:
-        _log.error("load_config failed: %s", exc)
-        return {}
+        _log.error("load_config: %s is unreadable: %s", path, exc)
+
+    env_json = os.environ.get("GAOS_CONFIG_JSON", "").strip()
+    if env_json:
+        try:
+            return json.loads(env_json)
+        except Exception as exc:
+            _log.error("load_config: GAOS_CONFIG_JSON is not valid JSON: %s", exc)
+            return {}
+
+    _log.error(
+        "load_config: no config found — create config.json or set GAOS_CONFIG_JSON"
+    )
+    return {}
+
+
+def config_source() -> str:
+    """Reports where config is coming from: 'file', 'env', or 'none'."""
+    if os.path.exists("config.json"):
+        return "file"
+    if os.environ.get("GAOS_CONFIG_JSON", "").strip():
+        return "env"
+    return "none"
 
 
 def get_secret(key_path: str, default=None):
@@ -90,25 +120,62 @@ def get_logger(name: str) -> logging.Logger:
 
 
 def connect_gmail():
+    """Connects to Gmail.
+
+    Credential resolution order:
+      1. token.json on disk (local dev — written by the first OAuth run)
+      2. GAOS_TOKEN_JSON env var (cloud deploys — paste token.json contents)
+      3. Interactive browser OAuth via credentials.json — LOCAL ONLY.
+         Never attempted when GAOS_HEADLESS=1 or when running without a
+         token, so a gunicorn worker can never hang waiting for a browser.
+    """
     try:
         from google.auth.transport.requests import Request
         from google.oauth2.credentials import Credentials
-        from google_auth_oauthlib.flow import InstalledAppFlow
         from googleapiclient.discovery import build
 
         creds = None
         if os.path.exists("token.json"):
             creds = Credentials.from_authorized_user_file("token.json", _GMAIL_SCOPES)
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    "credentials.json", _GMAIL_SCOPES
+        else:
+            env_token = os.environ.get("GAOS_TOKEN_JSON", "").strip()
+            if env_token:
+                creds = Credentials.from_authorized_user_info(
+                    json.loads(env_token), _GMAIL_SCOPES
                 )
-                creds = flow.run_local_server(port=0)
-            with open("token.json", "w", encoding="utf-8") as token_file:
-                token_file.write(creds.to_json())
+
+        if creds and not creds.valid and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            try:  # persist the refreshed token for this process's lifetime
+                with open("token.json", "w", encoding="utf-8") as token_file:
+                    token_file.write(creds.to_json())
+            except OSError:
+                pass  # read-only filesystem — refreshed creds still work in memory
+
+        if creds and creds.valid:
+            return build("gmail", "v1", credentials=creds)
+
+        # No usable token — interactive flow is a local-dev-only path.
+        if os.environ.get("GAOS_HEADLESS") == "1":
+            _log.error(
+                "connect_gmail: no valid token and GAOS_HEADLESS=1 — "
+                "set GAOS_TOKEN_JSON (contents of a locally generated token.json)"
+            )
+            return None
+        if not os.path.exists("credentials.json"):
+            _log.error(
+                "connect_gmail: no token.json/GAOS_TOKEN_JSON and no "
+                "credentials.json — Gmail features disabled"
+            )
+            return None
+
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        flow = InstalledAppFlow.from_client_secrets_file(
+            "credentials.json", _GMAIL_SCOPES
+        )
+        creds = flow.run_local_server(port=0)
+        with open("token.json", "w", encoding="utf-8") as token_file:
+            token_file.write(creds.to_json())
         return build("gmail", "v1", credentials=creds)
     except Exception as exc:
         _log.error("connect_gmail failed: %s", exc)
@@ -370,15 +437,34 @@ def _get_sheets_client():
             )
             _sheets_client = gspread.authorize(creds)
             return _sheets_client
+        env_sa = os.environ.get("GAOS_SERVICE_ACCOUNT_JSON", "").strip()
+        if env_sa:
+            creds = service_account.Credentials.from_service_account_info(
+                json.loads(env_sa), scopes=_SHEETS_SCOPES
+            )
+            _sheets_client = gspread.authorize(creds)
+            return _sheets_client
+        oauth_info = None
         if os.path.exists("token.json"):
             oauth_creds = Credentials.from_authorized_user_file(
                 "token.json", scopes=_SHEETS_SCOPES
             )
+        else:
+            env_token = os.environ.get("GAOS_TOKEN_JSON", "").strip()
+            oauth_info = json.loads(env_token) if env_token else None
+            oauth_creds = (
+                Credentials.from_authorized_user_info(oauth_info, scopes=_SHEETS_SCOPES)
+                if oauth_info else None
+            )
+        if oauth_creds:
             if oauth_creds.expired and oauth_creds.refresh_token:
                 oauth_creds.refresh(Request())
             _sheets_client = gspread.authorize(oauth_creds)
             return _sheets_client
-        _log.error("_get_sheets_client: neither service_account.json nor token.json found")
+        _log.error(
+            "_get_sheets_client: no service_account.json, token.json, "
+            "GAOS_SERVICE_ACCOUNT_JSON, or GAOS_TOKEN_JSON found"
+        )
         return None
     except Exception as exc:
         _log.error("_get_sheets_client failed: %s", exc)
@@ -543,10 +629,16 @@ def twiml_say_hangup(text: str) -> str:
 
 # ── SCHEDULING ───────────────────────────────────────────────────
 
+# Dedupe registry: remembers which (slot, date) combinations already fired
+# this process lifetime, so a daily job can never double-send within one
+# window (e.g. two polls both landing inside an 08:00–08:05 window).
+_fired_slots: set = set()
+
+
 def should_run_at(hour: int, weekday: int = None, day_of_month: int = None,
                   minute_start: int = 0, minute_window: int = 5) -> bool:
     """
-    Returns True once per scheduled window.
+    Returns True at most ONCE per scheduled window per day (process-local).
 
     hour          — 0-23, required
     weekday       — 0=Monday … 6=Sunday (None = every day)
@@ -560,6 +652,13 @@ def should_run_at(hour: int, weekday: int = None, day_of_month: int = None,
         should_run_at(9, day_of_month=1)        → 1st of every month at 09:00–09:05
         should_run_at(7, minute_start=30)       → daily at 07:30–07:35
         should_run_at(7, weekday=0, minute_start=45) → every Monday at 07:45–07:50
+
+    Reliability notes:
+      * Double-fire protection — once a slot returns True it cannot return
+        True again on the same calendar day, even if a second poll lands
+        inside the same window.
+      * Set minute_window to at least (poll_seconds / 60) + 1 so polling
+        drift cannot skip a window entirely.
     """
     now = datetime.now()
     if now.hour != hour:
@@ -570,6 +669,22 @@ def should_run_at(hour: int, weekday: int = None, day_of_month: int = None,
         return False
     if day_of_month is not None and now.day != day_of_month:
         return False
+
+    # Dedupe per CALL SITE per day: two different modules (or two different
+    # lines in one module) scheduled at the same hour must never block each
+    # other, but the same line polled twice inside one window must not fire twice.
+    import sys as _sys
+    frame = _sys._getframe(1)
+    call_site = (frame.f_code.co_filename, frame.f_lineno)
+    slot_key = (call_site, hour, weekday, day_of_month, minute_start,
+                now.date().isoformat())
+    if slot_key in _fired_slots:
+        return False
+    # prune entries from previous days so the set never grows unbounded
+    today = now.date().isoformat()
+    stale = {k for k in _fired_slots if k[5] != today}
+    _fired_slots.difference_update(stale)
+    _fired_slots.add(slot_key)
     return True
 
 

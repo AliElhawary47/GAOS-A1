@@ -17,6 +17,7 @@ Interface (the only surface callers ever see):
 
 import json
 import logging
+import os
 import re
 import time
 from typing import Optional
@@ -156,8 +157,12 @@ class _AIManager:
 
     def _build(self):
         try:
-            with open("config.json", "r", encoding="utf-8") as f:
-                cfg = json.load(f)
+            # Lazy import — gaos_core only imports gaos_ai inside function
+            # bodies, so there is no circular import at module load time.
+            # Using core.load_config() means GAOS_CONFIG_JSON (cloud deploys)
+            # works for AI provider keys exactly like it does everywhere else.
+            from gaos_core import load_config
+            cfg = load_config()
         except Exception:
             cfg = {}
 
@@ -228,9 +233,6 @@ class _AIManager:
             ],
         }
 
-
-# Import os here (needed inside _AIManager._build)
-import os
 
 _manager: Optional[_AIManager] = None
 

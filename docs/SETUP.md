@@ -274,7 +274,7 @@ Embed the chatbot widget on any website:
 
 ### Option A: Railway.app (recommended, free tier available)
 1. Push the GAOS folder to a GitHub repo
-2. Connect Railway to your repo → it reads `deploy/railway.toml`
+2. Connect Railway to your repo → it reads `railway.toml` from the repository root
 3. Set environment variables in the Railway dashboard (API keys etc.)
 
 ### Option B: Oracle Cloud Always Free (runs 10+ clients per VM)
