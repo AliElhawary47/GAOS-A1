@@ -102,7 +102,7 @@ def run():
     gmail = core.connect_gmail()
     log.info("module_04_review_requester: Watching for completed jobs.")
     core.run_loop(lambda: check_completed_jobs(cfg, gmail),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

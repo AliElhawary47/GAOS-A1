@@ -137,7 +137,7 @@ def run():
                                    ["Subject", "Question", "From", "Logged At"])
     log.info("module_06_faq_reply: Watching inbox for answerable questions.")
     core.run_loop(lambda: scan(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

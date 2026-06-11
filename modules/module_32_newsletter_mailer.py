@@ -61,16 +61,39 @@ def send_newsletter(gmail, cfg, newsletter_text):
 
     sent = 0
     for row in rows:
-        email = str(row.get("Email", "")).strip()
-        name  = str(row.get("Name",  "")).strip()
+        email  = str(row.get("Email", "")).strip()
+        name   = str(row.get("Name",  "")).strip()
+        status = str(row.get("Status", "")).strip().lower()
         if not email:
             continue
+        # Never newsletter churned / opted-out clients
+        if status in ("churned", "inactive", "cancelled", "lost",
+                      "do not contact", "do-not-contact", "left"):
+            continue
         personalised = f"Dear {name},\n\n{body}" if name else body
-        core.gmail_send(gmail, email, cfg["gmail"]["watch_inbox"],
-                        subject, personalised)
-        sent += 1
+        if core.gmail_send(gmail, email, cfg["gmail"]["watch_inbox"],
+                           subject, personalised):
+            sent += 1
 
     return sent, subject
+
+
+def _month_matches(month_cell: str) -> bool:
+    """True when a hand-typed Month cell means the current month.
+    Accepts '2026-06', '2026-06-01', 'June 2026', 'Jun 2026'."""
+    text = str(month_cell).strip()
+    if not text:
+        return False
+    if text[:7] == datetime.now().strftime("%Y-%m"):
+        return True
+    for fmt in ("%B %Y", "%b %Y"):
+        try:
+            dt = datetime.strptime(text, fmt)
+            return (dt.year, dt.month) == (datetime.now().year,
+                                           datetime.now().month)
+        except ValueError:
+            continue
+    return False
 
 
 def run_newsletter(gmail, cfg):
@@ -79,10 +102,11 @@ def run_newsletter(gmail, cfg):
     month_str  = datetime.now().strftime("%B %Y")
     rows       = core.sheets_read_all(sheet_id, tab)
 
-    # Find this month's pending newsletter
+    # Find this month's pending newsletter ("sending" excluded too, so a
+    # process restart mid-send can never blast every client twice)
     pending = [r for r in rows
-               if str(r.get("Status","")).strip().lower() not in ("sent","skip")
-               and str(r.get("Month","")).strip()[:7] == datetime.now().strftime("%Y-%m")]
+               if str(r.get("Status","")).strip().lower() not in ("sent","skip","sending")
+               and _month_matches(r.get("Month",""))]
 
     if not pending:
         log.info(f"No newsletter queued for {month_str}.")
@@ -108,13 +132,15 @@ def run_newsletter(gmail, cfg):
         log.error("AI failed to generate newsletter.")
         return
 
+    # Claim the row before the send loop so a crash/restart can't double-send
+    idx = rows.index(row)
+    core.sheets_update_cell(sheet_id, tab, idx + 2, "Status", "Sending")
+
     count, subject = send_newsletter(gmail, cfg, newsletter)
     log.info(f"Newsletter '{subject}' sent to {count} clients.")
 
-    # Mark as sent
-    idx = rows.index(row)
-    core.sheets_update_cell(sheet_id, tab, idx + 2, 4, "Sent")
-    core.sheets_update_cell(sheet_id, tab, idx + 2, 5, core.timestamp())
+    core.sheets_update_cell(sheet_id, tab, idx + 2, "Status", "Sent")
+    core.sheets_update_cell(sheet_id, tab, idx + 2, "Sent At", core.timestamp())
 
 
 def _tick(gmail, cfg):
@@ -126,7 +152,8 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info("Scheduled: first Monday of every month at 9am. Ctrl+C to stop.")
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg),
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

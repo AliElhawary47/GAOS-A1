@@ -5,25 +5,26 @@ Zone 0: Sense | Standalone: £900 | In: Enterprise
 Reads the London Gazette — the UK's official public record — every morning
 and cross-references its notices against your client and supplier lists.
 
-Three types of notice monitored:
+Two types of notice monitored:
 
-  1. INSOLVENCY — liquidations, administrations, bankruptcies.
-     Cross-reference against Invoice_Log to catch bad debts before
-     they become uncollectable.
+  1. CORPORATE INSOLVENCY — winding-up petitions and orders,
+     liquidations, administrations. Cross-reference against
+     Invoice_Log and Clients to catch bad debts before they
+     become uncollectable. (Companies House strike-off notices
+     are published as bulk Gazette supplements without structured
+     data, so the winding-up petition — which precedes them — is
+     the earliest structured warning available.)
 
-  2. STRIKE-OFF WARNINGS — companies failing to file accounts, 2 months
-     from dissolution. Cross-reference against supplier list for
-     continuity risk.
-
-  3. ESTATE NOTICES — probate creditor notices for recently deceased.
+  2. ESTATE NOTICES — probate creditor notices for recently deceased.
      For legal firms and estate professionals: these are warm leads
      arriving daily, publicly, for free.
 
 The Gazette API is free, Crown Copyright, Open Government Licence.
 No API key required. No rate limits documented.
 
-API: https://www.thegazette.co.uk/notice/search?notice-type=...
-     Returns JSON. Completely free.
+API: https://www.thegazette.co.uk/all-notices/notice/data.json
+     ?noticetypes=<code>&start-publish-date=YYYY-MM-DD
+     Notices are returned under the "entry" key.
 
 Target: Any business that invoices other businesses (insolvency/strike-off),
         solicitors and estate professionals (probate pipeline).
@@ -39,13 +40,15 @@ log = core.get_logger("gazette_monitor")
 
 RUN_HOUR = 7   # Before Daily Digest so digest can include any alerts
 
-GAZETTE_API = "https://www.thegazette.co.uk/notice/search"
+GAZETTE_API = "https://www.thegazette.co.uk/all-notices/notice/data.json"
 
-# Notice type codes used by the Gazette API
+# Notice type codes used by the Gazette data feed (verified live):
+#   2450 — Corporate Insolvency (umbrella: winding-up petitions/orders,
+#          liquidator appointments, administrations)
+#   2903 — Deceased Estates (probate creditor notices)
 NOTICE_TYPES = {
-    "insolvency":    "2700",   # Insolvency: liquidation, administration, bankruptcy
-    "strike_off":    "2750",   # Companies about to be struck off
-    "estate":        "2600",   # Wills, probate, estate notices
+    "insolvency": "2450",
+    "estate":     "2903",
 }
 
 
@@ -53,54 +56,60 @@ NOTICE_TYPES = {
 
 def fetch_gazette_notices(notice_type_code, days_back=1):
     """
-    Fetches recent notices from the London Gazette API.
-    Returns a list of notice dicts.
+    Fetches recent notices from the London Gazette data feed.
+    Returns a list of normalised notice dicts:
+    {"name", "content", "url", "category"}.
     """
     import requests
     since = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
     params = {
-        "notice-type": notice_type_code,
+        "noticetypes": notice_type_code,
         "start-publish-date": since,
         "results-page-size": 50,
-        "format": "application/json",
     }
     try:
-        r = requests.get(GAZETTE_API, params=params, timeout=15,
-                         headers={"Accept": "application/json"})
+        r = requests.get(GAZETTE_API, params=params, timeout=20)
         if r.status_code != 200:
             log.error(f"Gazette API returned {r.status_code}")
             return []
-        data = r.json()
-        # Gazette returns notices under 'results' or '_embedded'
-        results = (data.get("results") or
-                   data.get("_embedded", {}).get("notices", []) or
-                   data.get("notices", []))
-        return results if isinstance(results, list) else []
+        entries = r.json().get("entry", [])
+        notices = []
+        for e in entries:
+            category = e.get("category", "")
+            if isinstance(category, dict):
+                category = category.get("@term", "")
+            notices.append({
+                # title holds the company / deceased person's name
+                "name":     str(e.get("title", "")).replace("/n", "").strip(),
+                "content":  str(e.get("content", "")),
+                # "id" is already a full URI like
+                # https://www.thegazette.co.uk/id/notice/5151815
+                "url":      str(e.get("id", "")),
+                "category": str(category),
+            })
+        return notices
     except Exception as e:
         log.error(f"Gazette fetch error: {e}")
         return []
 
 
 def extract_company_names(notices):
-    """Extracts company names from Gazette notice records."""
+    """Extracts company names from normalised Gazette notice records."""
     names = set()
     for n in notices:
-        # Try multiple possible fields
-        for field in ("companyName", "company_name", "name", "title", "subject"):
-            val = n.get(field, "")
-            if val and isinstance(val, str):
-                names.add(val.strip())
-                break
-        # Also try to extract from body text if present
-        body = n.get("body", n.get("content", n.get("noticeText", "")))
+        if n.get("name"):
+            names.add(n["name"].strip())
+        body = n.get("content", "")
         if body:
-            # Company names in Gazette are typically ALL CAPS or Title Case followed by Ltd/PLC
+            # Company names in Gazette notice bodies are ALL CAPS followed
+            # by a legal suffix. Case-sensitive on purpose — IGNORECASE
+            # over-captures surrounding lowercase prose.
             found = re.findall(
-                r'[A-Z][A-Z &\'\-]{2,}\s+(?:LIMITED|LTD|PLC|LLP|PARTNERSHIP)',
-                str(body), re.IGNORECASE
+                r'[A-Z][A-Z &\'\-]{2,}\s+(?:LIMITED|LTD|PLC|LLP)',
+                str(body)
             )
             names.update(f.strip() for f in found)
-    return names
+    return {n for n in names if len(n) >= 4}
 
 
 def fuzzy_match(gazette_name, client_name):
@@ -111,6 +120,9 @@ def fuzzy_match(gazette_name, client_name):
     """
     gn = re.sub(r'\b(LIMITED|LTD|PLC|LLP)\b', '', gazette_name.upper()).strip()
     cn = re.sub(r'\b(LIMITED|LTD|PLC|LLP)\b', '', client_name.upper()).strip()
+    # Empty strings must never match anything
+    if len(gn) < 4 or len(cn) < 4:
+        return False
     # Match if one contains the other (handles abbrev/short names)
     return gn in cn or cn in gn or (len(gn) > 6 and gn[:6] == cn[:6])
 
@@ -129,8 +141,8 @@ def cross_reference(gazette_names, cfg):
         invoices = core.sheets_read_all(
             sheet_id, cfg["google_sheets"]["tabs"].get("invoices", "Invoice_Log")
         )
-        known = {str(r.get("Vendor", "")).strip() for r in invoices
-                 if r.get("Vendor")}
+        known = {str(r.get("Client", "")).strip() for r in invoices
+                 if r.get("Client")}
     except Exception:
         known = set()
 
@@ -171,36 +183,15 @@ def run_gazette_scan(gmail, cfg):
                 "type":    "INSOLVENCY",
                 "gazette": m["gazette"],
                 "known":   m["known_as"],
-                "message": (f"'{m['known_as']}' appears in today's insolvency notices. "
-                            f"Check for outstanding invoices and consider chasing immediately. "
-                            f"Insolvency administrators typically accept creditor claims "
-                            f"for 14–28 days after notice."),
+                "message": (f"'{m['known_as']}' appears in today's corporate insolvency "
+                            f"notices (winding-up petition/order, liquidation or "
+                            f"administration). Check for outstanding invoices and "
+                            f"consider chasing immediately. Insolvency administrators "
+                            f"typically accept creditor claims for 14–28 days after notice."),
             })
         log.warning(f"Insolvency match(es) found: {len(insolvency_matches)}")
     else:
         log.info(f"  {len(insolvency_names)} insolvency notices — no matches with your contacts.")
-
-    # --- Strike-off scan ---
-    log.info("Scanning Gazette: strike-off warnings...")
-    strikeoff_notices = fetch_gazette_notices(NOTICE_TYPES["strike_off"])
-    strikeoff_names   = extract_company_names(strikeoff_notices)
-    strikeoff_matches = cross_reference(strikeoff_names, cfg)
-
-    if strikeoff_matches:
-        for m in strikeoff_matches:
-            alerts.append({
-                "type":    "STRIKE-OFF WARNING",
-                "gazette": m["gazette"],
-                "known":   m["known_as"],
-                "message": (f"'{m['known_as']}' has received a compulsory strike-off warning "
-                            f"from Companies House (published in today's Gazette). "
-                            f"They have approximately 2 months before dissolution. "
-                            f"If they are a supplier, consider finding alternatives. "
-                            f"If they owe you money, chase this debt now."),
-            })
-        log.warning(f"Strike-off match(es) found: {len(strikeoff_matches)}")
-    else:
-        log.info(f"  {len(strikeoff_names)} strike-off notices — no matches.")
 
     # --- Estate/probate scan (log as leads rather than risk alerts) ---
     log.info("Scanning Gazette: estate notices...")
@@ -212,6 +203,7 @@ def run_gazette_scan(gmail, cfg):
 
     # --- Send alert if any risk matches found ---
     if alerts:
+        _log_gazette_hits(cfg, alerts)
         _send_risk_alert(gmail, cfg, alerts, today)
     else:
         log.info("Gazette scan complete. No risk matches found today.")
@@ -219,19 +211,37 @@ def run_gazette_scan(gmail, cfg):
     return len(alerts)
 
 
+def _log_gazette_hits(cfg, alerts):
+    """Logs each risk match to the Gazette_Hits tab.
+    Canonical columns: Date | Company | Notice Type | Details | Actioned"""
+    sheet_id = cfg["google_sheets"]["sheet_id"]
+    tab      = cfg["google_sheets"]["tabs"].get("gazette_hits", "Gazette_Hits")
+    for a in alerts:
+        try:
+            core.sheets_append_row(sheet_id, tab, [
+                core.timestamp(), a["gazette"], a["type"],
+                f"Matches your contact: {a['known']}", ""
+            ])
+        except Exception:
+            pass
+
+
 def _log_estate_leads(cfg, notices):
-    """Logs estate notices as leads for legal/probate professionals."""
+    """Logs estate notices as leads for legal/probate professionals.
+    Canonical Lead_Log order:
+    [Date, From, Email, Subject, Summary, Status, Chase Sent, Source]"""
     sheet_id = cfg["google_sheets"]["sheet_id"]
     tab      = cfg["google_sheets"]["tabs"].get("leads", "Lead_Log")
     for n in notices[:10]:   # cap at 10
-        name    = n.get("companyName", n.get("title", "Estate notice"))
-        ref     = n.get("id", n.get("noticeCode", ""))
-        summary = str(n.get("body", n.get("content", "")))[:120]
+        name = n.get("name") or "Estate notice"
+        # strip HTML tags from the notice body for the summary
+        summary = re.sub(r"<[^>]+>", " ", n.get("content", ""))
+        summary = re.sub(r"\s+", " ", summary).strip()[:150]
         try:
             core.sheets_append_row(sheet_id, tab, [
-                name, "", summary,
-                "Gazette Estate Lead", core.timestamp(),
-                f"https://www.thegazette.co.uk/notice/{ref}"
+                core.timestamp(), name, "", "Gazette estate notice",
+                summary, "Gazette Estate Lead", "",
+                n.get("url", ""),   # already a full URI from the feed
             ])
         except Exception:
             pass
@@ -282,7 +292,8 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info(f"Scheduled: daily at {RUN_HOUR}:00. Ctrl+C to stop.")
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg),
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

@@ -177,7 +177,7 @@ def run():
     gmail = core.connect_gmail()
     log.info("module_01_invoice_scanner: Gmail connected. Watching for invoices.")
     core.run_loop(lambda: scan(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

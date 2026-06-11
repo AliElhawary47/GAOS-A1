@@ -103,7 +103,7 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info("module_03_urgent_alert: Watching for urgent leads. Fast SMS mode.")
-    poll = min(cfg["settings"]["check_every_seconds"], 60)
+    poll = min(cfg.get("settings", {}).get("check_every_seconds", 300), 60)
     core.run_loop(lambda: scan(gmail, cfg), poll)
 
 

@@ -161,7 +161,7 @@ def run():
     get_template()  # ensure template exists
     log.info("module_05_contract_sender: Watching for new client onboarding requests.")
     core.run_loop(lambda: scan(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

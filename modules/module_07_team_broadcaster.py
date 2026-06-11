@@ -125,7 +125,7 @@ def run():
     gmail = core.connect_gmail()
     log.info("module_07_team_broadcaster: Watching for business events to broadcast.")
     core.run_loop(lambda: process_events(gmail, cfg),
-                  cfg["settings"]["check_every_seconds"])
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

@@ -139,7 +139,7 @@ def run():
             print("\nStopped.\n"); break
         except Exception as ex:
             log.error(f"Loop error: {ex}")
-        time.sleep(cfg["settings"]["check_every_seconds"])
+        time.sleep(cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

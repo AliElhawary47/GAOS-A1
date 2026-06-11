@@ -34,12 +34,9 @@ log = core.get_logger("land_registry_radar")
 RUN_WEEKDAY = 0   # Monday
 RUN_HOUR    = 9   # After gazette scan and digest
 
-# Land Registry Price Paid Data — monthly CSV endpoint
-# The 'recent' file always contains the last month's data
-LR_RECENT_URL = "https://publicdata.landregistry.gov.uk/market-trend-data/price-paid-data/a/pp-monthly-update-new-version.csv"
-
-# Fallback: last complete monthly file
-LR_BASE_URL   = "https://publicdata.landregistry.gov.uk/market-trend-data/price-paid-data"
+# Land Registry Price Paid Data — monthly CSV endpoint (verified live).
+# The 'monthly update' file always contains the last month's transactions.
+LR_RECENT_URL = "https://price-paid-data.publicdata.landregistry.gov.uk/pp-monthly-update-new-version.csv"
 
 # Property type scoring for renovation potential
 PROPERTY_SCORES = {
@@ -62,11 +59,19 @@ def price_score(price):
 
 
 def get_postcode_prefix(postcode):
-    """Extracts the first 2-4 characters of a postcode for area matching."""
-    pc = postcode.upper().replace(" ", "")
-    # Match the area code (letters + first digit group, e.g. "LS1", "SW1A", "M")
-    m = re.match(r'^([A-Z]{1,2}\d{1,2}[A-Z]?)', pc)
-    return m.group(1) if m else pc[:3]
+    """Returns the OUTWARD code (e.g. 'LS1' from 'LS1 4AP') for exact
+    area matching. Stripping the space and regex-matching greedily would
+    swallow the inward code ('LS1 4AP' → 'LS14A'), matching nothing."""
+    parts = postcode.upper().strip().split()
+    if parts:
+        return parts[0]
+    return postcode.upper().strip()
+
+
+def _postcode_outward(csv_postcode):
+    """Outward code of a CSV postcode cell ('LS1 4AP' → 'LS1')."""
+    parts = str(csv_postcode).upper().strip().split()
+    return parts[0] if parts else ""
 
 
 def download_price_paid_data():
@@ -128,8 +133,9 @@ def parse_price_paid_csv(csv_text, postcode_prefix, days_back=35):
             if date_str < cutoff:
                 continue
 
-            # Postcode filter
-            if not postcode.upper().startswith(postcode_prefix.upper()):
+            # Postcode filter — exact outward-code match ('LS1' must not
+            # also match LS10–LS19, so plain startswith is wrong)
+            if _postcode_outward(postcode) != postcode_prefix.upper():
                 continue
 
             price = int(price_str) if price_str.isdigit() else 0
@@ -202,7 +208,22 @@ def run_radar(gmail, cfg):
     else:
         sales = [s for s in sales if not s["new_build"]]
 
-    # Log top 15 to Lead_Log
+    # Dedupe: the monthly file overlaps weekly runs by design, so skip
+    # transactions already logged (transaction ID lives in the
+    # Land_Registry_Leads "Notes" column).
+    lr_tab = cfg["google_sheets"]["tabs"].get("land_leads", "Land_Registry_Leads")
+    try:
+        existing_ids = {str(r.get("Notes", "")).strip()
+                        for r in core.sheets_read_all(sheet_id, lr_tab)}
+    except Exception:
+        existing_ids = set()
+    sales = [s for s in sales if s["id"] not in existing_ids]
+
+    if not sales:
+        log.info("All recent sales already logged — nothing new this week.")
+        return 0
+
+    # Log top 15 to Land_Registry_Leads + Lead_Log
     logged = 0
     for sale in sales[:15]:
         contact_date = contact_date_from_sale(sale["date"])
@@ -211,14 +232,23 @@ def run_radar(gmail, cfg):
                 f"Renovation potential score: {sale['score']}/7. "
                 f"Suggested first contact: {contact_date}")
         try:
+            # Canonical Land_Registry_Leads:
+            # [Date, Address, Price, Buyer, Seller, Status, Notes]
+            core.sheets_append_row(sheet_id, lr_tab, [
+                sale["date"], sale["address"], sale["price"],
+                "", "", "New", sale["id"],
+            ])
+            # Canonical Lead_Log:
+            # [Date, From, Email, Subject, Summary, Status, Chase Sent, Source]
             core.sheets_append_row(sheet_id, tab, [
-                sale["address"],       # Name / address
-                "",                    # Email — to find
-                note,                  # Enquiry / notes
-                "Property Lead",       # Status
-                core.timestamp(),      # Logged At
-                contact_date,          # Suggested contact
-                "",                    # URL
+                core.timestamp(),
+                sale["address"],
+                "",
+                "Property sale — renovation lead",
+                note,
+                "Land Registry Lead",
+                "",
+                "",
             ])
             logged += 1
         except Exception as e:
@@ -281,7 +311,8 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info(f"Scheduled: every Monday at {RUN_HOUR}:00. Ctrl+C to stop.")
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg),
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

@@ -78,7 +78,7 @@ COS_QUERY_PATTERNS = [
     r"what'?s? (coming up|due|overdue|outstanding|urgent)",
     r"(show|give|tell) me (my |the )?(briefing|summary|digest|report|status)",
     r"(morning|daily|weekly) (brief|update|report|summary)",
-    r"(any |new )?(leads|invoices|messages|alerts|opportunities)",
+    r"\b(any|new|latest|today'?s?)\s+(leads|invoices|messages|alerts|opportunities)\b",
     r"chief of staff",
     r"what did gaos (do|find|catch|notice)",
     r"(revenue|income|money|cash) (this week|today|this month)",
@@ -155,7 +155,7 @@ def gather_sales(cfg) -> List[IntelItem]:
         lead_tab = cfg["google_sheets"]["tabs"].get("leads", "Lead_Log")
         leads    = core.sheets_read_all(sheet_id, lead_tab)
         new_leads  = [r for r in leads
-                      if str(r.get("Logged At", ""))[:10] >= week_ago
+                      if str(r.get("Date", ""))[:10] >= week_ago
                       and str(r.get("Status","")).lower() not in ("won","lost")]
         hot_leads  = [r for r in new_leads
                       if "urgent" in str(r.get("Status","")).lower()
@@ -163,7 +163,7 @@ def gather_sales(cfg) -> List[IntelItem]:
 
         if hot_leads:
             for lead in hot_leads[:3]:
-                name = str(lead.get("Name", lead.get("Company","Lead"))).strip()
+                name = str(lead.get("From", lead.get("Name","Lead"))).strip()
                 items.append(IntelItem(
                     category="urgent",
                     role="sales",
@@ -329,8 +329,10 @@ def gather_intelligence(cfg) -> List[IntelItem]:
             week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
             lead_rows = core.sheets_read_all(sheet_id, lead_tab)
             new_leads = [r for r in lead_rows
-                         if str(r.get("Logged At",""))[:10] >= week_ago
-                         and str(r.get("Status","")).lower() in ("planning lead","land registry lead")]
+                         if str(r.get("Date",""))[:10] >= week_ago
+                         and str(r.get("Status","")).lower() in
+                         ("planning lead", "land registry lead",
+                          "gazette estate lead")]
             if new_leads:
                 items.append(IntelItem(
                     category="info",
@@ -652,7 +654,8 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info("Scheduled: daily 07:30, weekly Mondays 07:45. Ctrl+C to stop.")
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg),
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

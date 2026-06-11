@@ -24,9 +24,13 @@ erosion since the contract was signed. When a contract has
 silently lost 10% of its real value to inflation, GAOS flags it
 with a suggested new rate and a draft price increase letter.
 
-Both APIs are completely free:
-  BoE IADB: https://www.bankofengland.co.uk/boeapps/database/
-  ONS API:  https://api.beta.ons.gov.uk/v1/
+Both feeds are completely free (verified live):
+  BoE IADB CSV: bankofengland.co.uk/boeapps/iadb/fromshowcolumns.asp
+                (months must be %b format, e.g. 01/Jan/2026; rows are
+                month-end dated, so query a few months back)
+  ONS website JSON: ons.gov.uk/economy/inflationandpriceindices/
+                timeseries/d7g7/mm23/data (12-month CPI % rate;
+                the old api.ons.gov.uk was retired in Nov 2024)
 
 No API keys. No rate limits. Open Government Licence.
 
@@ -45,12 +49,18 @@ log = core.get_logger("rate_macro_pulse")
 CHECK_HOUR = 12   # Run at noon — BoE decisions published at 12:00
 CPI_HOUR   = 8    # Monthly CPI check runs at 8am on 1st of month
 
-# Bank of England IADB — base rate series
-BOE_RATE_URL = ("https://www.bankofengland.co.uk/boeapps/database/_iadb-FromShowColumns.asp"
-                "?csv.x=yes&Datefrom=01/{m}/{y}&Dateto=now&SeriesCodes=IUMABEDR&CSVF=TN&UsingCodes=Y")
+# Bank of England IADB — base rate series (IUMABEDR), CSV output.
+# {since} must be %d/%b/%Y (e.g. 01/Mar/2026) — numeric months return HTTP 500.
+BOE_RATE_URL = ("https://www.bankofengland.co.uk/boeapps/iadb/fromshowcolumns.asp"
+                "?csv.x=yes&Datefrom={since}&Dateto=now"
+                "&SeriesCodes=IUMABEDR&CSVF=TN&UsingCodes=Y")
 
-# ONS CPI — CPIH series (headline CPI including housing costs)
-ONS_CPI_URL = "https://api.beta.ons.gov.uk/v1/datasets/cpih01/editions/time-series/versions/20/observations?geography=K02000001&aggregate=cpih1dim1A0"
+# ONS CPI all-items 12-month % rate (series D7G7, dataset MM23) —
+# served as JSON by the ONS website itself.
+ONS_CPI_URL = ("https://www.ons.gov.uk/economy/inflationandpriceindices"
+               "/timeseries/d7g7/mm23/data")
+
+_HTTP_HEADERS = {"User-Agent": "Mozilla/5.0 (GAOS Rate Pulse)"}
 
 RATE_MEMORY_KEY = "boe_base_rate_last"
 CPI_MEMORY_KEY  = "ons_cpi_last"
@@ -63,17 +73,20 @@ EROSION_ALERT_THRESHOLD = 0.08   # Alert when real value erosion exceeds 8%
 # ── BANK OF ENGLAND RATE ──────────────────────────────────────
 
 def fetch_current_boe_rate():
-    """Fetches the current Bank of England base rate from the IADB."""
+    """Fetches the current Bank of England base rate from the IADB.
+    Rows are month-end dated, so look back ~4 months and take the
+    latest row."""
     import requests
-    now   = datetime.now()
-    url   = BOE_RATE_URL.format(m=f"{now.month:02d}", y=now.year)
+    since = (datetime.now() - timedelta(days=120)).strftime("01/%b/%Y")
+    url   = BOE_RATE_URL.format(since=since)
     try:
-        r = requests.get(url, timeout=15)
+        r = requests.get(url, timeout=20, headers=_HTTP_HEADERS)
         if r.status_code != 200:
+            log.error(f"BoE IADB returned {r.status_code}")
             return None
-        # BoE CSV: Date, Rate — take last row
+        # BoE CSV: "31 May 2026,3.75" — take the last data row
         lines = [l.strip() for l in r.text.split("\n") if l.strip()]
-        data_lines = [l for l in lines if l and l[0].isdigit()]
+        data_lines = [l for l in lines if l and l[0].isdigit() and "," in l]
         if not data_lines:
             return None
         last = data_lines[-1].split(",")
@@ -84,15 +97,16 @@ def fetch_current_boe_rate():
 
 
 def get_stored_rate(cfg):
-    """Retrieves the last recorded rate from GAOS memory."""
+    """Retrieves the last recorded rate from GAOS memory
+    (canonical GAOS_Memory columns: Key | Value | Updated)."""
     try:
-        from modules import module_25_gaos_learn as learn
         rows = core.sheets_read_all(
             cfg["google_sheets"]["sheet_id"], "GAOS_Memory"
         )
         for r in rows:
             if r.get("Key") == RATE_MEMORY_KEY:
-                return float(r.get("Value", "0"))
+                value = str(r.get("Value", "")).strip()
+                return float(value) if value else None
     except Exception:
         pass
     return None
@@ -137,9 +151,8 @@ def handle_rate_change(gmail, cfg, old_rate, new_rate):
         f"Change:        {'−' if new_rate < old_rate else '+'}{change:.2f}%\n\n"
         f"What to do now:\n"
         f"1. Review your clients who have variable-rate products\n"
-        f"2. Use the draft email below to reach out today\n"
+        f"2. A draft client email has been saved to your Gmail Drafts\n"
         f"3. Update your advice materials with the new rate\n\n"
-        f"Draft client email is in your Drafts folder.\n\n"
         f"Aether Frameworks — GAOS™ Rate Pulse"
     )
 
@@ -160,66 +173,48 @@ def handle_rate_change(gmail, cfg, old_rate, new_rate):
     )
 
     if draft_body:
-        # Save as a Gmail draft
-        core.gmail_send(
+        # Save as a real Gmail draft, as the alert email promises
+        core.gmail_create_draft(
             gmail,
             cfg["gmail"]["alert_email"],
-            cfg["gmail"]["watch_inbox"],
-            f"[DRAFT] Rate change: what this means for you — {business}",
-            f"DRAFT EMAIL — Personalise and send to relevant clients:\n\n{draft_body}"
+            f"Rate change: what this means for you — {business}",
+            draft_body
         )
-        log.info("Draft rate change email saved.")
+        log.info("Draft rate change email saved to Drafts.")
+
+    # Canonical Macro_Log: [Date, Type, Value, Change, Notes]
+    try:
+        core.sheets_append_row(
+            cfg["google_sheets"]["sheet_id"],
+            cfg["google_sheets"]["tabs"].get("macro_log", "Macro_Log"),
+            [core.timestamp(), "BoE Base Rate", f"{new_rate:.2f}%",
+             f"{'+' if new_rate > old_rate else '−'}{change:.2f}%",
+             f"Changed from {old_rate:.2f}%"]
+        )
+    except Exception:
+        pass
 
 
 # ── ONS CPI CONTRACT EROSION ──────────────────────────────────
 
 def fetch_current_cpi():
-    """Fetches the latest ONS CPIH headline rate."""
+    """Fetches the latest ONS CPI all-items 12-month % rate (e.g. 2.8).
+    The value is already a year-on-year percentage, NOT an index."""
     import requests
-    # Alternative: use the simpler ONS time series endpoint
-    url = "https://api.beta.ons.gov.uk/v1/datasets/cpih01/editions/time-series/versions/20/observations"
     try:
-        r = requests.get(url, timeout=15, params={
-            "geography":  "K02000001",
-            "aggregate":  "cpih1dim1A0",
-        })
+        r = requests.get(ONS_CPI_URL, timeout=20, headers=_HTTP_HEADERS)
         if r.status_code != 200:
-            # Fallback: fetch the published CPI page
-            return _fetch_cpi_fallback()
-        data = r.json()
-        obs  = data.get("observations", [])
-        if obs:
-            # Take the most recent non-null value
-            recent = sorted(
-                (o for o in obs if o.get("observation") not in (None, "")),
-                key=lambda x: x.get("time", ""),
-                reverse=True
-            )
-            if recent:
-                return float(str(recent[0]["observation"]).replace(",", ""))
-        return _fetch_cpi_fallback()
+            log.error(f"ONS returned {r.status_code}")
+            return None
+        months = r.json().get("months", [])
+        for entry in reversed(months):
+            value = str(entry.get("value", "")).strip()
+            if value:
+                return float(value)
+        return None
     except Exception as e:
         log.error(f"ONS CPI fetch error: {e}")
-        return _fetch_cpi_fallback()
-
-
-def _fetch_cpi_fallback():
-    """Fetches CPI from the Bank of England IADB as a fallback."""
-    import requests
-    now = datetime.now()
-    url = ("https://www.bankofengland.co.uk/boeapps/database/_iadb-FromShowColumns.asp"
-           f"?csv.x=yes&Datefrom=01/01/{now.year - 1}&Dateto=now"
-           "&SeriesCodes=CPIRATE&CSVF=TN&UsingCodes=Y")
-    try:
-        r = requests.get(url, timeout=15)
-        lines = [l.strip() for l in r.text.split("\n") if l.strip()]
-        data  = [l for l in lines if l and l[0].isdigit()]
-        if data:
-            last = data[-1].split(",")
-            return float(last[1].strip()) if len(last) >= 2 else None
-    except Exception:
-        pass
-    return None
+        return None
 
 
 def calculate_erosion(start_date_str, current_cpi, base_cpi=None):
@@ -230,11 +225,12 @@ def calculate_erosion(start_date_str, current_cpi, base_cpi=None):
     """
     if not current_cpi:
         return 0.0
+    start_dt = core.parse_date(start_date_str)
+    if not start_dt:
+        return 0.0
     try:
-        start_dt = datetime.strptime(start_date_str[:10], "%Y-%m-%d")
-        months   = (datetime.now() - start_dt).days / 30.44
-        # Estimate annual CPI rate from current published value
-        # CPI is published as a year-on-year % change
+        months = (datetime.now() - start_dt).days / 30.44
+        # current_cpi is the published year-on-year % rate (e.g. 2.8)
         annual_rate = current_cpi / 100
         erosion = 1 - (1 / (1 + annual_rate)) ** (months / 12)
         return round(max(0, erosion), 4)
@@ -259,13 +255,14 @@ def run_cpi_check(gmail, cfg, cpi_rate):
 
     erosion_flags = []
     for row in rows:
-        active        = str(row.get("Active", "yes")).strip().lower()
-        client        = str(row.get("Client Name", "")).strip()
-        fee_str       = str(row.get("Monthly Fee", "0")).strip()
-        currency      = str(row.get("Currency", "£")).strip()
-        last_invoiced = str(row.get("Last Invoiced", "")).strip()
+        # Canonical Retainer_Clients: Name | Email | Amount | Billing Day | Status | Last Invoice
+        status        = str(row.get("Status", "")).strip().lower()
+        client        = str(row.get("Name", "")).strip()
+        fee_str       = str(row.get("Amount", "0")).strip()
+        currency      = "£"
+        last_invoiced = str(row.get("Last Invoice", "")).strip()
 
-        if active not in ("yes", "true", "1", "y") or not client:
+        if status not in ("", "active", "yes", "true", "1", "y") or not client:
             continue
 
         # Use Last Invoiced as proxy for contract start if no start date
@@ -376,6 +373,15 @@ def _tick(gmail, cfg):
         cpi = fetch_current_cpi()
         if cpi:
             log.info(f"ONS CPI: {cpi}% — checking contract erosion...")
+            try:
+                core.sheets_append_row(
+                    cfg["google_sheets"]["sheet_id"],
+                    cfg["google_sheets"]["tabs"].get("macro_log", "Macro_Log"),
+                    [core.timestamp(), "ONS CPI", f"{cpi}%", "",
+                     "Monthly contract erosion check"]
+                )
+            except Exception:
+                pass
             run_cpi_check(gmail, cfg, cpi)
         else:
             log.warning("Could not fetch ONS CPI data.")
@@ -385,7 +391,8 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info("Watching Bank of England rate (noon daily) and ONS CPI (1st of month). Ctrl+C to stop.")
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg),
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

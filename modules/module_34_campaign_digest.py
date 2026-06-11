@@ -22,23 +22,32 @@ RUN_HOUR    = 17
 RUN_WEEKDAY = 4   # Friday
 
 
-def count_this_week(rows, date_col, default_col=None):
-    """Count rows logged in the current week."""
-    week_start = (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d")
-    count = 0
-    for row in rows:
-        date_str = str(row.get(date_col, "") or row.get(default_col or "", ""))[:10]
-        if date_str >= week_start:
-            count += 1
-    return count
+def _in_last_days(value, days=7):
+    """True when a sheet date cell parses and falls within the window.
+    Unparseable cells never count — a name in a date column must not
+    inflate the stats."""
+    dt = core.parse_date(value)
+    return bool(dt) and dt >= datetime.now() - timedelta(days=days)
+
+
+def count_this_week(rows, date_col):
+    """Count rows logged in the last 7 days."""
+    return sum(1 for row in rows if _in_last_days(row.get(date_col, "")))
 
 
 def count_reviews_by_sentiment(rows):
-    pos = sum(1 for r in rows
-              if str(r.get("Stars","0")).strip().isdigit()
-              and int(str(r.get("Stars","0")).strip()) >= 4)
-    neg = len(rows) - pos
-    return pos, neg
+    """Returns (positive, negative, unrated) counts.
+    Unknown star ratings are reported separately, never guessed."""
+    pos = neg = unrated = 0
+    for r in rows:
+        stars = core.safe_int(r.get("Stars", ""), -1)
+        if stars < 0:
+            unrated += 1
+        elif stars >= 4:
+            pos += 1
+        else:
+            neg += 1
+    return pos, neg, unrated
 
 
 def generate_digest(gmail, cfg):
@@ -60,29 +69,27 @@ def generate_digest(gmail, cfg):
     leads_rows      = read("leads",             "Lead_Log")
     reeng_rows      = read("clients",           "Clients")
 
-    # Count this week's activity
+    # Count this week's activity (canonical column names)
     social_sent     = sum(1 for r in social_rows
                           if str(r.get("Status","")).lower() == "sent"
-                          and str(r.get("Sent At",""))[:10] >=
-                          (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"))
-    reviews_week    = count_this_week(reviews_rows, "Date", "Logged At")
-    pos_rev, neg_rev = count_reviews_by_sentiment(reviews_rows[-reviews_week:]) if reviews_week else (0, 0)
+                          and _in_last_days(r.get("Sent At","")))
+    week_reviews    = [r for r in reviews_rows if _in_last_days(r.get("Date",""))]
+    reviews_week    = len(week_reviews)
+    pos_rev, neg_rev, unrated_rev = count_reviews_by_sentiment(week_reviews)
     newsletter_sent = sum(1 for r in newsletter_rows
                           if str(r.get("Status","")).lower() == "sent"
                           and str(r.get("Sent At",""))[:7] == datetime.now().strftime("%Y-%m"))
     chatbot_leads   = sum(1 for r in leads_rows
                           if "chatbot" in str(r.get("Status","")).lower()
-                          and str(r.get("Logged At",""))[:10] >=
-                          (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"))
+                          and _in_last_days(r.get("Date","")))
     reeng_sent      = sum(1 for r in reeng_rows
-                          if str(r.get("Re-Engaged",""))[:10] >=
-                          (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"))
+                          if _in_last_days(r.get("Re-Engaged","")))
 
     # AI insight
     prompt = (
         f"Write a one-sentence marketing insight for {business} based on this week:\n"
         f"Social posts published: {social_sent}, Reviews: {reviews_week} "
-        f"({pos_rev} positive, {neg_rev} negative), "
+        f"({pos_rev} positive, {neg_rev} negative, {unrated_rev} unrated), "
         f"Newsletter sent this month: {'Yes' if newsletter_sent else 'No'}, "
         f"Chatbot leads: {chatbot_leads}, Re-engagement emails: {reeng_sent}.\n"
         f"Be specific and actionable. Return ONLY the sentence."
@@ -95,7 +102,8 @@ def generate_digest(gmail, cfg):
         f"Week ending {today}\n"
         f"{'─'*42}\n\n"
         f"📱 Social posts published:  {social_sent}\n"
-        f"⭐ Reviews received:        {reviews_week} ({pos_rev}✓ {neg_rev}✗)\n"
+        f"⭐ Reviews received:        {reviews_week} ({pos_rev}✓ {neg_rev}✗"
+        f"{f' {unrated_rev}?' if unrated_rev else ''})\n"
         f"📧 Newsletter (this month): {'Sent' if newsletter_sent else 'Not sent yet'}\n"
         f"💬 Chatbot leads:           {chatbot_leads}\n"
         f"🔄 Re-engagement emails:    {reeng_sent}\n\n"
@@ -120,7 +128,8 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info("Scheduled: every Friday at 17:00. Ctrl+C to stop.")
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg),
+                  cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":

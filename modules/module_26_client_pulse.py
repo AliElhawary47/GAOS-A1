@@ -311,7 +311,7 @@ def run():
     cfg   = core.load_config()
     gmail = core.connect_gmail()
     log.info(f"Scheduled: every Monday at {RUN_HOUR}:{RUN_MINUTE:02d}. Ctrl+C to stop.")
-    core.run_loop(lambda: _tick(gmail, cfg), cfg["settings"]["check_every_seconds"])
+    core.run_loop(lambda: _tick(gmail, cfg), cfg.get("settings", {}).get("check_every_seconds", 300))
 
 
 if __name__ == "__main__":
