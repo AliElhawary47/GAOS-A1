@@ -5,12 +5,12 @@
     "_comment": "Optional: Primary or fallback AI provider. Get key at: platform.deepseek.com — typical usage ~£2-5/month. Leave as 'YOUR_DEEPSEEK_KEY_HERE' to disable."
   },
   "groq": {
-    "api_key": "YOUR_GROQ_KEY_HERE",
+    "api_key": "xai-2m8yUtULVdf8XpToHOA8IadULYY37zy945LxUznsSVCZPrM3IDQB89s3nfCf5uazdTzCZlMhrZr5dTV0",
     "_comment": "Recommended: FREE TIER fallback AI. Sign up at: groq.com — no credit card required. If both are configured, Groq is primary (it's free). Leave as 'YOUR_GROQ_KEY_HERE' to disable."
   },
   "gmail": {
-    "watch_inbox": "YOUR_WATCH_INBOX@gmail.com",
-    "alert_email": "YOUR_PERSONAL_EMAIL@gmail.com",
+    "watch_inbox": "product.gaos.test@gmail.com",
+    "alert_email": "product.gaos.test@gmail.com",
     "_comment": "watch_inbox: the Gmail account GAOS monitors. alert_email: where to send alerts."
   },
   "google_sheets": {
