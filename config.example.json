@@ -1,11 +1,11 @@
 {
   "_comment": "GAOS™ v3.4 config (34 modules + AI failover). Copy to config.json and fill in real values. Secrets can also be set as environment variables (e.g. DEEPSEEK_API_KEY, GROQ_API_KEY).",
   "deepseek": {
-    "api_key": "YOUR_DEEPSEEK_KEY_HERE",
+    "api_key": "sk-28e42c424bbd46dda8e6ba24200d1052",
     "_comment": "Optional: Primary or fallback AI provider. Get key at: platform.deepseek.com — typical usage ~£2-5/month. Leave as 'YOUR_DEEPSEEK_KEY_HERE' to disable."
   },
   "groq": {
-    "api_key": "xai-2m8yUtULVdf8XpToHOA8IadULYY37zy945LxUznsSVCZPrM3IDQB89s3nfCf5uazdTzCZlMhrZr5dTV0",
+    "api_key": "xai-XSJIzemVDKwtNexfkt78bk5QLJuEcE3uwLpLGGNS0uCeqYjjBCqutWu5MwGE4ce9RimvA0OdnTAcM15Q",
     "_comment": "Recommended: FREE TIER fallback AI. Sign up at: groq.com — no credit card required. If both are configured, Groq is primary (it's free). Leave as 'YOUR_GROQ_KEY_HERE' to disable."
   },
   "gmail": {
