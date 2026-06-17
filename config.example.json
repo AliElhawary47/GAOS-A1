@@ -14,7 +14,7 @@
     "_comment": "watch_inbox: the Gmail account GAOS monitors. alert_email: where to send alerts."
   },
   "google_sheets": {
-    "sheet_id": "YOUR_GOOGLE_SHEET_ID_HERE",
+    "sheet_id": "GAOS Test",
     "_comment": "The shared Google Sheet where all module data is stored. Must be shared with the service account email.",
     "tabs": {
       "invoices":          "Invoice_Log",
@@ -58,10 +58,10 @@
     "_comment": "Optional Slack integration for alerts and digests. Leave as placeholder to disable."
   },
   "business": {
-    "name":                 "Client Business Name",
+    "name":                 "Spud",
     "google_review_link":   "https://g.page/r/YOUR_REVIEW_LINK",
-    "owner_name":           "Your Name",
-    "owner_mobile":         "+44XXXXXXXXXX",
+    "owner_name":           "Ali Elhawary",
+    "owner_mobile":         "+44886630979",
     "booking_link":         "https://calendly.com/yourbusiness",
     "website":              "https://yourbusiness.co.uk",
     "postcode":             "LS1 4AP",
